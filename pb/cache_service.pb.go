@@ -4,7 +4,7 @@
 // 	protoc        v3.12.1
 // source: cache_service.proto
 
-package __
+package pb
 
 import (
 	empty "github.com/golang/protobuf/ptypes/empty"
