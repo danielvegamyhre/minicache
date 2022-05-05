@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -22,10 +23,13 @@ import (
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/lru_cache"
 	"sync"
+	"strconv"
+
+    "github.com/gin-gonic/gin"
 )
 
-// Identity server
 type CacheServer struct {
+	router				*gin.Engine
 	cache				*lru_cache.LruCache
 	logger 				*zap.SugaredLogger 
 	nodes_config 		node.NodesConfig
@@ -33,16 +37,20 @@ type CacheServer struct {
 	node_id 			int32
 	shutdown_chan 		chan bool
 	decision_chan		chan int32
-	sync_complete		chan bool	
 	vector_clock 		*VectorClock
 	mutex 				sync.RWMutex
 	election_status 	bool
 	pb.UnimplementedCacheServiceServer
 }
 
+type Pair struct {
+	Key 	int		`json:"key"`
+	Value	int		`json:"value"`	
+}
+
 // Utility function for creating a new gRPC server secured with mTLS, and registering a cache server service with it.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
-func GetNewCacheServer(config_file string, verbose bool) (*grpc.Server, *CacheServer) {	
+func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Server, *CacheServer) {	
 	// set up logging
 	sugared_logger := GetSugaredZapLogger(verbose)
 
@@ -58,18 +66,29 @@ func GetNewCacheServer(config_file string, verbose bool) (*grpc.Server, *CacheSe
 	clock := &VectorClock{NodeId: node_id, Logger: sugared_logger}
 	clock.InitVector(len(nodes_config.Nodes))
 
+	// set up gin router
+	router := gin.Default()
+
+	// initialize LRU cache
+	lru := lru_cache.NewLruCache(capacity)
+
 	// create server instance
 	cache_server := CacheServer{
+		router:				router,
+		cache:				&lru,	
 		logger: 			sugared_logger,
 		nodes_config: 	 	nodes_config,
 		node_id: 			node_id,
 		leader_id: 			NO_LEADER,
 		shutdown_chan:		make(chan bool, 1),
 		decision_chan: 		make(chan int32, 1),
-		sync_complete:		make(chan bool, 1),
 		vector_clock: 		clock,
 		election_status: 	NO_ELECTION_RUNNING,
 	}
+
+	// routes
+	router.GET("/get", cache_server.GetHandler)
+	router.POST("/put", cache_server.PutHandler)
 
 	// set up TLS
 	creds, err := LoadTLSCredentials()
@@ -82,6 +101,29 @@ func GetNewCacheServer(config_file string, verbose bool) (*grpc.Server, *CacheSe
 	pb.RegisterCacheServiceServer(grpc_server, &cache_server)
 	reflection.Register(grpc_server)
 	return grpc_server, &cache_server
+}
+
+func (s *CacheServer) GetHandler(c *gin.Context) {
+	key, err := strconv.Atoi(c.Param("key"))
+	if err != nil {
+		s.logger.Errorf("error getting key from request context: %v", err)
+		return
+	}
+	value, err := s.cache.Get(key)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "key not found"})
+	}
+	c.IndentedJSON(http.StatusOK, value)
+}
+
+func (s *CacheServer) PutHandler(c *gin.Context) {
+    var newPair Pair
+    if err := c.BindJSON(&newPair); err != nil {
+		s.logger.Errorf("unable to deserialize key-value pair from json")
+        return
+    }
+	s.cache.Put(newPair.Key, newPair.Value)
+    c.IndentedJSON(http.StatusCreated, newPair)
 }
 
 // Utility function for creating a new gRPC server secured with mTLS in test mode.
@@ -108,7 +150,6 @@ func GetNewTestTestCacheServer(verbose bool) (*grpc.Server, *CacheServer) {
 		leader_id: 		NO_LEADER,
 		shutdown_chan:	make(chan bool),
 		decision_chan: 	make(chan int32),
-		sync_complete:	make(chan bool),
 		vector_clock: 	clock,
 	}
 

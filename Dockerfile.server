@@ -10,4 +10,4 @@ COPY . .
 
 RUN go build
 
-CMD ["./cache_server","-config","nodes-docker.json","-verbose"]
+CMD ["./cache_server","-config","configs/nodes-docker.json","-verbose"]
