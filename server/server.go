@@ -1,5 +1,10 @@
-// This package defines an Identity CacheServer which uses gRPC secured with mTLS and a local Redis server
-// as an in-memory data store which periodically persists to disk (and persists to disk on shutdown as well).
+// This package defines a cache server with the following features:
+// - REST API endpoints client get/put operations
+// - inter-node communciation via gRPC secured with mTLS 
+// - fault tolerance via single-leader asynchronous replication
+// - leader election via Bully Algorithm
+// - vector clocks used for resolving conflicts
+// - eventual consistency guarantee
 package server
 
 import (
