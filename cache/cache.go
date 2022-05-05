@@ -1,5 +1,9 @@
 package cache
 
+import (
+	"errors"
+)
+
 // doubly-linked list node
 type Node struct {
     prev    *Node
@@ -8,8 +12,8 @@ type Node struct {
     val     int
 }
 
-// LRU cache which uses a hashmap and doubly-linked list to acheive O(1) time for get/put/evict operations
-type LRUCache struct {
+// Lru cache which uses a hashmap and doubly-linked list to acheive O(1) time for get/put/evict operations
+type LruCache struct {
     cache       map[int]*Node
     head        *Node
     tail        *Node
@@ -18,8 +22,8 @@ type LRUCache struct {
 }
 
 // initialize and return new lru cache of specified capacity
-func New(capacity int) LRUCache {
-    lru_cache := LRUCache{
+func NewLruCache(capacity int) LruCache {
+    lru_cache := LruCache{
         cache:      make(map[int]*Node, capacity),
         head:       &Node{prev: nil, next: nil, key: -1, val: -1},
         tail:       &Node{prev: nil, next: nil, key: -1, val: -1},
@@ -32,18 +36,18 @@ func New(capacity int) LRUCache {
 }
 
 
-func (lru *LRUCache) Get(key int) int {
+func (lru *LruCache) Get(key int) (int, error) {
     // case 1: key in cache, move to head of list and return
     if node, ok := lru.cache[key]; ok {
         lru.moveNodeToHead(node)
-        return node.val
+        return node.val, nil
     }
     // case 2: key does not exist
-    return -1
+    return -1, errors.New("element does not exist in cache")
 }
 
 
-func (lru *LRUCache) Put(key int, value int)  {
+func (lru *LruCache) Put(key int, value int)  {
     // case 1: in cache already
     if node, ok := lru.cache[key]; ok {
         // update value and move to head
@@ -76,7 +80,7 @@ func (lru *LRUCache) Put(key int, value int)  {
     }
 }
 
-func (lru *LRUCache) moveNodeToHead(node *Node) {
+func (lru *LruCache) moveNodeToHead(node *Node) {
     // remove from middle
     prev := node.prev
     next := node.next
@@ -94,7 +98,7 @@ func (lru *LRUCache) moveNodeToHead(node *Node) {
     lru.head.next = node
 }
 
-func (lru *LRUCache) evict() {
+func (lru *LruCache) evict() {
     // delete node from tail
     node := lru.tail.prev
     prev := lru.tail.prev.prev
