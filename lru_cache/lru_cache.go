@@ -1,6 +1,6 @@
 // LRU Cache implementation which uses a hashmap and doubly-linked list 
 // to achieve O(1) get/put operations and O(1) eviction.
-package cache
+package lru_cache
 
 import (
 	"errors"
