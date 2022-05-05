@@ -1,0 +1,38 @@
+# Docker Compose file Reference (https://docs.docker.com/compose/compose-file/)
+
+version: '3'
+
+# Define services
+services:
+
+  # 2 App Services
+  cacheserver0:
+    # Configuration for building the docker image for the service
+    hostname: cacheserver0
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment: # Pass environment variables to the service
+      GODEBUG: x509sha1=1 
+
+  cacheserver1:
+    # Configuration for building the docker image for the service
+    hostname: cacheserver1
+    build:
+      context: . # Use an image built from the specified dockerfile in the current directory.
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment: # Pass environment variables to the service
+      GODEBUG: x509sha1=1   
+
+  cacheserver2:
+    # Configuration for building the docker image for the service
+    hostname: cacheserver2
+    build:
+      context: . # Use an image built from the specified dockerfile in the current directory.
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment: # Pass environment variables to the service
+      GODEBUG: x509sha1=1   
+
