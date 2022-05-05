@@ -1,0 +1,105 @@
+
+syntax = "proto3";
+option go_package = "./";
+import "google/protobuf/empty.proto";
+package pb;
+
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  string data = 1;
+}
+
+message PutRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message GenericResponse {
+  string data = 1;
+}
+
+message HeartbeatRequest {
+  int32 caller_node_id = 1;
+}
+
+message HeartbeatResponse {
+  int32 node_id = 1;
+  string status = 2;
+}
+
+message LeaderRequest {
+  string caller = 1;
+}
+
+message LeaderResponse {
+  string host = 1;
+  int32 port = 2;
+}
+
+message NewLeaderAnnouncement {
+  int32 leader_id = 1;
+}
+
+message VectorClockRequest {
+  repeated int32 vector = 1;
+}
+
+message VectorClockResponse {
+  repeated int32 vector = 1;
+}
+
+message PidRequest {
+  int32 caller_pid = 1;
+}
+
+message PidResponse {
+  int32 pid = 1;
+}
+
+message RequestSyncRequest {
+  int32 node_id = 1;
+  repeated int32 vector_clock = 2;
+}
+
+message SyncCompleteRequest {
+  int32 node_id = 1;
+}
+
+message ElectionRequest {
+  int32 caller_pid = 1;
+  int32 caller_node_id = 2;
+}
+
+message CheckpointRequest {
+  int32 caller_node_id = 1;
+}
+
+message CheckpointDoneRequest{
+  int32 caller_node_id = 1;
+}
+
+service IdentityService {
+  // Get/Put operations
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Put(PutRequest) returns (google.protobuf.Empty);
+
+  // Elections
+  rpc GetPid(PidRequest) returns (PidResponse);
+  rpc GetLeader(LeaderRequest) returns (LeaderResponse);
+  rpc GetHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc UpdateLeader(NewLeaderAnnouncement) returns (GenericResponse);
+  rpc RequestElection(ElectionRequest) returns (GenericResponse);
+
+  // Replication and synchronization
+  rpc GetVectorClock(VectorClockRequest) returns (VectorClockResponse);
+  rpc UpdateVectorClock(VectorClockRequest) returns (VectorClockResponse);
+  rpc RequestSync(RequestSyncRequest) returns (google.protobuf.Empty);
+  rpc SyncComplete(SyncCompleteRequest) returns (google.protobuf.Empty);
+
+  // Distributed checkpointing
+  rpc RequestCheckpoint(CheckpointRequest) returns (GenericResponse);
+  rpc NotifyCheckpointDone(CheckpointDoneRequest) returns (GenericResponse);
+} 
