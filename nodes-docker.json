@@ -1,0 +1,25 @@
+{
+    "nodes": [
+        {
+            "id": 0,
+            "host": "identityserver0",
+            "port": 5005,
+            "redis_host": "redis0",
+            "redis_port": 6379
+        },
+        {
+            "id": 1,
+            "host": "identityserver1",
+            "port": 5005,
+            "redis_host": "redis1",
+            "redis_port": 6379
+        },
+        {
+            "id": 2,
+            "host": "identityserver2",
+            "port": 5005,
+            "redis_host": "redis2",
+            "redis_port": 6379
+        }
+    ]
+}
