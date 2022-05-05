@@ -1,5 +1,5 @@
 # minicache
 
-[![Build](https://github.com/malwaredllc/minicache/workflows/go/badge.svg)](https://github.com/malwaredllc/minicache/actions)
+![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
 Distributed cache that supports consistent hashing and leader-based replication.
