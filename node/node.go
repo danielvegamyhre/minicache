@@ -41,7 +41,7 @@ func GetCurrentNodeId(config NodesConfig) int32 {
 		}
 	}
 	// if host not found, return -1
-	return -1
+	return 0
 }
 
 // Get random node from config
