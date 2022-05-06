@@ -30,7 +30,7 @@ func (s *CacheServer) RunElection() {
 		}
 
 		// new identity service client
-		client := NewGrpcClientForNode(&node)
+		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
@@ -79,7 +79,7 @@ func (s *CacheServer) RunElection() {
 }
 
 // Announce new leader to all nodes
-func (s *CacheServer) AnnounceNewLeader(winner int32) {
+func (s *CacheServer) AnnounceNewLeader(winner string) {
 	s.logger.Infof("Announcing node %d won election",  winner)
 
 	// if no response from any higher node IDs, declare self the winner and announce to all
@@ -90,7 +90,7 @@ func (s *CacheServer) AnnounceNewLeader(winner int32) {
 		}
 
 		// new identity service client
-		client := NewGrpcClientForNode(&node)
+		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
@@ -144,7 +144,7 @@ func (s *CacheServer) IsLeaderAlive() bool {
 	leader := s.nodes_config.Nodes[s.leader_id]
 
 	// new identity service client
-	client := NewGrpcClientForNode(&leader)
+	client := NewGrpcClientForNode(leader)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

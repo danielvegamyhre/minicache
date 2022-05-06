@@ -6,15 +6,13 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"os"
-	"math/rand"
-	"time"
 	"hash/crc32"
 )
 
 
 // NodesConfig struct holds info about all server nodes in the network
 type NodesConfig struct {
-	Nodes 	[]*Node 	`json:"nodes"`
+	Nodes 	map[string]*Node 	`json:"nodes"`
 }
 
 // Node struct contains all info we need about a server node, as well as 
@@ -62,11 +60,4 @@ func GetCurrentNodeId(config NodesConfig) string {
 	}
 	// if host not found, return empty string
 	return ""
-}
-
-// Get random node from config
-func GetRandomNode(config NodesConfig) *Node {
-	rand.Seed(time.Now().UnixNano())
-	randomIndex := rand.Intn(len(config.Nodes))
-	return config.Nodes[randomIndex]
 }

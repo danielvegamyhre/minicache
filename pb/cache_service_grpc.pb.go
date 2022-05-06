@@ -28,14 +28,9 @@ type CacheServiceClient interface {
 	GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	UpdateLeader(ctx context.Context, in *NewLeaderAnnouncement, opts ...grpc.CallOption) (*GenericResponse, error)
 	RequestElection(ctx context.Context, in *ElectionRequest, opts ...grpc.CallOption) (*GenericResponse, error)
-	// Replication and synchronization
+	// Replication
 	GetVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error)
 	UpdateVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error)
-	RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// Distributed checkpointing
-	RequestCheckpoint(ctx context.Context, in *CheckpointRequest, opts ...grpc.CallOption) (*GenericResponse, error)
-	NotifyCheckpointDone(ctx context.Context, in *CheckpointDoneRequest, opts ...grpc.CallOption) (*GenericResponse, error)
 }
 
 type cacheServiceClient struct {
@@ -127,42 +122,6 @@ func (c *cacheServiceClient) UpdateVectorClock(ctx context.Context, in *VectorCl
 	return out, nil
 }
 
-func (c *cacheServiceClient) RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/RequestSync", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cacheServiceClient) SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/SyncComplete", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cacheServiceClient) RequestCheckpoint(ctx context.Context, in *CheckpointRequest, opts ...grpc.CallOption) (*GenericResponse, error) {
-	out := new(GenericResponse)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/RequestCheckpoint", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cacheServiceClient) NotifyCheckpointDone(ctx context.Context, in *CheckpointDoneRequest, opts ...grpc.CallOption) (*GenericResponse, error) {
-	out := new(GenericResponse)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/NotifyCheckpointDone", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // CacheServiceServer is the server API for CacheService service.
 // All implementations must embed UnimplementedCacheServiceServer
 // for forward compatibility
@@ -176,14 +135,9 @@ type CacheServiceServer interface {
 	GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error)
 	RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error)
-	// Replication and synchronization
+	// Replication
 	GetVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error)
 	UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error)
-	RequestSync(context.Context, *RequestSyncRequest) (*empty.Empty, error)
-	SyncComplete(context.Context, *SyncCompleteRequest) (*empty.Empty, error)
-	// Distributed checkpointing
-	RequestCheckpoint(context.Context, *CheckpointRequest) (*GenericResponse, error)
-	NotifyCheckpointDone(context.Context, *CheckpointDoneRequest) (*GenericResponse, error)
 	mustEmbedUnimplementedCacheServiceServer()
 }
 
@@ -217,18 +171,6 @@ func (UnimplementedCacheServiceServer) GetVectorClock(context.Context, *VectorCl
 }
 func (UnimplementedCacheServiceServer) UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateVectorClock not implemented")
-}
-func (UnimplementedCacheServiceServer) RequestSync(context.Context, *RequestSyncRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RequestSync not implemented")
-}
-func (UnimplementedCacheServiceServer) SyncComplete(context.Context, *SyncCompleteRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SyncComplete not implemented")
-}
-func (UnimplementedCacheServiceServer) RequestCheckpoint(context.Context, *CheckpointRequest) (*GenericResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RequestCheckpoint not implemented")
-}
-func (UnimplementedCacheServiceServer) NotifyCheckpointDone(context.Context, *CheckpointDoneRequest) (*GenericResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NotifyCheckpointDone not implemented")
 }
 func (UnimplementedCacheServiceServer) mustEmbedUnimplementedCacheServiceServer() {}
 
@@ -405,78 +347,6 @@ func _CacheService_UpdateVectorClock_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CacheService_RequestSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestSyncRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CacheServiceServer).RequestSync(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.CacheService/RequestSync",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).RequestSync(ctx, req.(*RequestSyncRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CacheService_SyncComplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SyncCompleteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CacheServiceServer).SyncComplete(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.CacheService/SyncComplete",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).SyncComplete(ctx, req.(*SyncCompleteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CacheService_RequestCheckpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckpointRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CacheServiceServer).RequestCheckpoint(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.CacheService/RequestCheckpoint",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).RequestCheckpoint(ctx, req.(*CheckpointRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CacheService_NotifyCheckpointDone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckpointDoneRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CacheServiceServer).NotifyCheckpointDone(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.CacheService/NotifyCheckpointDone",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).NotifyCheckpointDone(ctx, req.(*CheckpointDoneRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // CacheService_ServiceDesc is the grpc.ServiceDesc for CacheService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -519,22 +389,6 @@ var CacheService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateVectorClock",
 			Handler:    _CacheService_UpdateVectorClock_Handler,
-		},
-		{
-			MethodName: "RequestSync",
-			Handler:    _CacheService_RequestSync_Handler,
-		},
-		{
-			MethodName: "SyncComplete",
-			Handler:    _CacheService_SyncComplete_Handler,
-		},
-		{
-			MethodName: "RequestCheckpoint",
-			Handler:    _CacheService_RequestCheckpoint_Handler,
-		},
-		{
-			MethodName: "NotifyCheckpointDone",
-			Handler:    _CacheService_NotifyCheckpointDone_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

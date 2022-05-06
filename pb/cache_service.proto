@@ -22,11 +22,11 @@ message GenericResponse {
 }
 
 message HeartbeatRequest {
-  int32 caller_node_id = 1;
+  string caller_node_id = 1;
 }
 
 message HeartbeatResponse {
-  int32 node_id = 1;
+  string node_id = 1;
   string status = 2;
 }
 
@@ -40,7 +40,7 @@ message LeaderResponse {
 }
 
 message NewLeaderAnnouncement {
-  int32 leader_id = 1;
+  string leader_id = 1;
 }
 
 message VectorClockRequest {
@@ -59,18 +59,9 @@ message PidResponse {
   int32 pid = 1;
 }
 
-message RequestSyncRequest {
-  int32 node_id = 1;
-  repeated int32 vector_clock = 2;
-}
-
-message SyncCompleteRequest {
-  int32 node_id = 1;
-}
-
 message ElectionRequest {
   int32 caller_pid = 1;
-  int32 caller_node_id = 2;
+  string caller_node_id = 2;
 }
 
 service CacheService {
@@ -85,9 +76,7 @@ service CacheService {
   rpc UpdateLeader(NewLeaderAnnouncement) returns (GenericResponse);
   rpc RequestElection(ElectionRequest) returns (GenericResponse);
 
-  // Replication and synchronization
+  // Replication
   rpc GetVectorClock(VectorClockRequest) returns (VectorClockResponse);
   rpc UpdateVectorClock(VectorClockRequest) returns (VectorClockResponse);
-  rpc RequestSync(RequestSyncRequest) returns (google.protobuf.Empty);
-  rpc SyncComplete(SyncCompleteRequest) returns (google.protobuf.Empty);
 } 
