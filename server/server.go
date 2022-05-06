@@ -102,6 +102,8 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 	return grpc_server, &cache_server
 }
 
+// GET /get/:key
+// REST API endpoint to get value for key from the LRU cache
 func (s *CacheServer) GetHandler(c *gin.Context) {
 	s.logger.Info("GetHandler called")
 	key, err := strconv.Atoi(c.Param("key"))
@@ -116,6 +118,8 @@ func (s *CacheServer) GetHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, value)
 }
 
+// POST /put (Body: {"key": "1", "value": "2"})
+// REST API endpoint to put a new key-value pair in the LRU cache
 func (s *CacheServer) PutHandler(c *gin.Context) {
 	s.logger.Info("PutHandler called")
     var newPair Pair
@@ -131,7 +135,7 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 
 func (s *CacheServer) RunHttpServer(port int) {
 	s.logger.Infof("Running HTTP server on port %d...", port)
-	s.router.Run()
+	s.router.Run(fmt.Sprintf(":%d", port))
 }
 
 // Utility function for creating a new gRPC server secured with mTLS in test mode.
