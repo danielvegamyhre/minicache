@@ -24,9 +24,11 @@ type Node struct {
 	HashId 				uint32
 }
 
-func NewNode(id string) *Node {
+func NewNode(id string, host string, port int32) *Node {
 	return &Node{
 		Id:     id,
+		Host:	host,
+		Port: 	port,
 		HashId: HashId(id),
 	}
 }
@@ -47,6 +49,17 @@ func LoadNodesConfig(config_file string) NodesConfig {
 	file, _ := ioutil.ReadFile(config_file)
 	nodes_config := NodesConfig{}
 	_ = json.Unmarshal([]byte(file), &nodes_config)
+
+	// if config is empty, add 1 node at localhost:8080
+	if len(nodes_config.Nodes) == 0 {
+		nodes_config = NodesConfig{Nodes: make(map[string]*Node)}
+		default_node := NewNode("node0", "localhost", 8080)
+		nodes_config.Nodes[default_node.Id] = default_node
+	} else {
+		for _, nodeInfo := range nodes_config.Nodes {
+			nodeInfo.HashId = HashId(nodeInfo.Id)
+		}
+	}
 	return nodes_config
 }
 
@@ -58,6 +71,6 @@ func GetCurrentNodeId(config NodesConfig) string {
 			return node.Id
 		}
 	}
-	// if host not found, return empty string
-	return ""
+	// if host not found, default to node 0
+	return "node0"
 }
