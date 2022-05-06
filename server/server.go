@@ -126,20 +126,22 @@ func (s *CacheServer) GetHandler(c *gin.Context) {
 // POST /put (Body: {"key": "1", "value": "2"})
 // REST API endpoint to put a new key-value pair in the LRU cache
 func (s *CacheServer) PutHandler(c *gin.Context) {
-	s.logger.Info("PutHandler called")
-    var newPair Pair
-    if err := c.BindJSON(&newPair); err != nil {
-		s.logger.Errorf("unable to deserialize key-value pair from json")
-        return
-    }
-	key, _ := strconv.Atoi(newPair.Key)
-	value, _ := strconv.Atoi(newPair.Value)
-	s.cache.Put(key, value)
-    c.IndentedJSON(http.StatusCreated, newPair)
+	result := make(chan gin.H)
+	go func(ctx *gin.Context) {
+    	var newPair Pair
+		if err := c.BindJSON(&newPair); err != nil {
+			s.logger.Errorf("unable to deserialize key-value pair from json")
+			return
+		}
+		key, _ := strconv.Atoi(newPair.Key)
+		value, _ := strconv.Atoi(newPair.Value)
+		s.cache.Put(key, value)
+		result <- gin.H{"key": key, "value": value}
+	}(c.Copy())
+    c.IndentedJSON(http.StatusCreated, <-result)
 }
 
 func (s *CacheServer) RunHttpServer(port int) {
-	s.logger.Infof("Running HTTP server on port %d...", port)
 	s.router.Run(fmt.Sprintf(":%d", port))
 }
 
