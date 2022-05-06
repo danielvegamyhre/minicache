@@ -44,8 +44,8 @@ type CacheServer struct {
 }
 
 type Pair struct {
-	Key 	int		`json:"key"`
-	Value	int		`json:"value"`	
+	Key 	string		`json:"key"`
+	Value	string `json:"value"`	
 }
 
 // Utility function for creating a new gRPC server secured with mTLS, and registering a cache server service with it.
@@ -86,9 +86,8 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 		election_status: 	NO_ELECTION_RUNNING,
 	}
 
-	// routes
-	router.GET("/get", cache_server.GetHandler)
-	router.POST("/put", cache_server.PutHandler)
+	cache_server.router.GET("/get/:key", cache_server.GetHandler)
+	cache_server.router.POST("/put", cache_server.PutHandler)
 
 	// set up TLS
 	creds, err := LoadTLSCredentials()
@@ -104,6 +103,7 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 }
 
 func (s *CacheServer) GetHandler(c *gin.Context) {
+	s.logger.Info("GetHandler called")
 	key, err := strconv.Atoi(c.Param("key"))
 	if err != nil {
 		s.logger.Errorf("error getting key from request context: %v", err)
@@ -117,13 +117,21 @@ func (s *CacheServer) GetHandler(c *gin.Context) {
 }
 
 func (s *CacheServer) PutHandler(c *gin.Context) {
+	s.logger.Info("PutHandler called")
     var newPair Pair
     if err := c.BindJSON(&newPair); err != nil {
 		s.logger.Errorf("unable to deserialize key-value pair from json")
         return
     }
-	s.cache.Put(newPair.Key, newPair.Value)
+	key, _ := strconv.Atoi(newPair.Key)
+	value, _ := strconv.Atoi(newPair.Value)
+	s.cache.Put(key, value)
     c.IndentedJSON(http.StatusCreated, newPair)
+}
+
+func (s *CacheServer) RunHttpServer(port int) {
+	s.logger.Infof("Running HTTP server on port %d...", port)
+	s.router.Run()
 }
 
 // Utility function for creating a new gRPC server secured with mTLS in test mode.

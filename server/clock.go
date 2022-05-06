@@ -21,7 +21,6 @@ func (c *VectorClock) InitVector(num_nodes int) {
 	for i, _ := range c.Vector {
 		c.Vector[i] = 0
 	}
-	c.Logger.Infof("vector clock %d restored from disk", c.Vector)
 }
 
 // Update vector clock based on incoming vector clock from other node
