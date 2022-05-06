@@ -67,7 +67,8 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 	clock.InitVector(len(nodes_config.Nodes))
 
 	// set up gin router
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
 
 	// initialize LRU cache
 	lru := lru_cache.NewLruCache(capacity)
@@ -105,17 +106,21 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 // GET /get/:key
 // REST API endpoint to get value for key from the LRU cache
 func (s *CacheServer) GetHandler(c *gin.Context) {
-	s.logger.Info("GetHandler called")
-	key, err := strconv.Atoi(c.Param("key"))
-	if err != nil {
-		s.logger.Errorf("error getting key from request context: %v", err)
-		return
-	}
-	value, err := s.cache.Get(key)
-	if err != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "key not found"})
-	}
-	c.IndentedJSON(http.StatusOK, value)
+	result := make(chan gin.H)
+	go func(ctx *gin.Context) {
+		key, err := strconv.Atoi(c.Param("key"))
+		if err != nil {
+			s.logger.Errorf("error getting key from request context: %v", err)
+			return
+		}
+		value, err := s.cache.Get(key)
+		if err != nil {
+			result <- gin.H{"message": "key not found"}
+		} else {
+			result <- gin.H{"value": value}
+		}
+	}(c.Copy())
+	c.IndentedJSON(http.StatusOK, <-result)
 }
 
 // POST /put (Body: {"key": "1", "value": "2"})

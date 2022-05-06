@@ -3,6 +3,7 @@
 package lru_cache
 
 import (
+	"sync"
 	"errors"
 )
 
@@ -21,6 +22,7 @@ type LruCache struct {
     tail        *Node
     capacity    int
     size        int
+    mutex       sync.RWMutex
 }
 
 // initialize and return new lru cache of specified capacity
@@ -39,6 +41,10 @@ func NewLruCache(capacity int) LruCache {
 
 
 func (lru *LruCache) Get(key int) (int, error) {
+    // read lock
+    lru.mutex.RLock()
+    defer lru.mutex.RUnlock()
+
     // case 1: key in cache, move to head of list and return
     if node, ok := lru.cache[key]; ok {
         lru.moveNodeToHead(node)
@@ -50,6 +56,10 @@ func (lru *LruCache) Get(key int) (int, error) {
 
 
 func (lru *LruCache) Put(key int, value int)  {
+    // write lock
+    lru.mutex.Lock()
+    defer lru.mutex.Unlock()
+    
     // case 1: in cache already
     if node, ok := lru.cache[key]; ok {
         // update value and move to head
