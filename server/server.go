@@ -33,10 +33,10 @@ type CacheServer struct {
 	cache				*lru_cache.LruCache
 	logger 				*zap.SugaredLogger 
 	nodes_config 		node.NodesConfig
-	leader_id 			int32
-	node_id 			int32
+	leader_id 			string
+	node_id 			string
 	shutdown_chan 		chan bool
-	decision_chan		chan int32
+	decision_chan		chan string
 	vector_clock 		*VectorClock
 	mutex 				sync.RWMutex
 	election_status 	bool
@@ -82,7 +82,7 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 		node_id: 			node_id,
 		leader_id: 			NO_LEADER,
 		shutdown_chan:		make(chan bool, 1),
-		decision_chan: 		make(chan int32, 1),
+		decision_chan: 		make(chan string, 1),
 		vector_clock: 		clock,
 		election_status: 	NO_ELECTION_RUNNING,
 	}
@@ -153,7 +153,7 @@ func GetNewTestTestCacheServer(verbose bool) (*grpc.Server, *CacheServer) {
 	sugared_logger := GetSugaredZapLogger(verbose)
 
 	// set node id
-	node_id := int32(0)
+	node_id := "node0"
 
 	// restore local vector clock from disk if it exists.
 	// this is so if all nodes go offline, when they reboot
@@ -168,7 +168,7 @@ func GetNewTestTestCacheServer(verbose bool) (*grpc.Server, *CacheServer) {
 		node_id: 		node_id,
 		leader_id: 		NO_LEADER,
 		shutdown_chan:	make(chan bool),
-		decision_chan: 	make(chan int32),
+		decision_chan: 	make(chan string),
 		vector_clock: 	clock,
 	}
 

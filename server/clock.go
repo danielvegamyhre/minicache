@@ -9,26 +9,26 @@ import (
 
 // Vector clock implementation that can be persisted to disk and restored
 type VectorClock struct {
-	Vector			[]int32
-	NodeId			int32
+	Vector			map[string]int
+	NodeId			string
 	Logger			*zap.SugaredLogger
 }
 
 // Restore vector clock from disk
 func (c *VectorClock) InitVector(num_nodes int) {
 	// initialize vector clock timestamps to 0
-	c.Vector = make([]int32, num_nodes)
+	c.Vector = make(map[string]int)
 	for i, _ := range c.Vector {
 		c.Vector[i] = 0
 	}
 }
 
 // Update vector clock based on incoming vector clock from other node
-func (c *VectorClock) UpdateAndIncrement(incoming_clock []int32) {
+func (c *VectorClock) UpdateAndIncrement(incoming_clock map[string]int) {
 	// merge in updated timestampsfor other nodes
-	for i, _ := range incoming_clock {
-		if c.Vector[i] < incoming_clock[i] {
-			c.Vector[i] = incoming_clock[i] 
+	for id, _ := range incoming_clock {
+		if c.Vector[id] < incoming_clock[id] {
+			c.Vector[id] = incoming_clock[id] 
 		}
 	}
 	// increment our own timestamp

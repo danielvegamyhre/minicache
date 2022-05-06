@@ -3,7 +3,7 @@ package server
 const (
 	LEADER = "LEADER"
 	FOLLOWER = "FOLLOWER"
-	NO_LEADER = -1
+	NO_LEADER = "NO LEADER"
 	SHUT_DOWN_SIGNAL = true
 	PROD_DB = 0
 	TEST_DB = 1
