@@ -21,5 +21,8 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Test LRU Cache
+      run: go test -v ./lru_cache
+
     - name: Test Consistent Hashing Ring
       run: go test -v ./ring
