@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"os"
+	"log"
 	"hash/crc32"
 )
 
@@ -52,6 +53,8 @@ func LoadNodesConfig(config_file string) NodesConfig {
 
 	// if config is empty, add 1 node at localhost:8080
 	if len(nodes_config.Nodes) == 0 {
+		log.Printf("couldn't find config file or it was empty: %s", config_file)
+		log.Println("using default node localhost:8080")
 		nodes_config = NodesConfig{Nodes: make(map[string]*Node)}
 		default_node := NewNode("node0", "localhost", 8080)
 		nodes_config.Nodes[default_node.Id] = default_node

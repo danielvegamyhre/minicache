@@ -1,19 +1,22 @@
 {
-    "nodes": [
-        {
+    "nodes": {
+        "node0": {
             "id": "node0",
             "host": "cacheserver0",
-            "port": 8080
+            "port": 8080,
+            "HashId": ""
         },
-        {
+        "node1": {
             "id": "node1",
             "host": "cacheserver1",
-            "port": 8080
+            "port": 8080,
+            "HashId": ""
         },
-        {
+        "node2": {
             "id": "node2",
             "host": "cacheserver2",
-            "port": 8080
+            "port": 8080,
+            "HashId": ""
         }
-    ]
+    }
 }
