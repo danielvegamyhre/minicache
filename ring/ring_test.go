@@ -6,17 +6,19 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	node1id = "node1"
-	node2id = "node2" 
-	node3id = "node3"
+const (
+	CONFIG_FILE = "../configs/nodes-docker.json"
 )
 
 func TestAddNode(t *testing.T) {
+	nodes_config := node.LoadNodesConfig(CONFIG_FILE)
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
 	Convey("Given empty ring", t, func() {
 		Convey("Then it should add node", func() {
 			r := NewRing()
-			r.AddNode(node1id)
+			r.AddNode(node0.Id, node0.Host, node0.Port)
 
 			So(r.Nodes.Len(), ShouldEqual, 1)
 
@@ -27,28 +29,33 @@ func TestAddNode(t *testing.T) {
 
 		Convey("Then it should add node & sort by node id", func() {
 			r := NewRing()
-			r.AddNode(node1id)
-			r.AddNode(node2id)
+			r.AddNode(node1.Id, node1.Host, node1.Port)
+			r.AddNode(node2.Id, node2.Host, node2.Port)
 
 			So(r.Nodes.Len(), ShouldEqual, 2)
 
-			node1hash := node.HashId(node1id)
-			node2hash := node.HashId(node2id)
+			node1hash := node.HashId(node1.Id)
+			node2hash := node.HashId(node2.Id)
 
 			So(node1hash, ShouldBeGreaterThan, node2hash)
 
-			So(r.Nodes[0].Id, ShouldEqual, node2id)
-			So(r.Nodes[1].Id, ShouldEqual, node1id)
+			So(r.Nodes[0].Id, ShouldEqual, node2.Id)
+			So(r.Nodes[1].Id, ShouldEqual, node1.Id)
 		})
 	})
 }
 
 func TestRemoveNode(t *testing.T) {
+	nodes_config := node.LoadNodesConfig(CONFIG_FILE)
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
+
 	Convey("Given ring with nodes", t, func() {
 		r := NewRing()
-		r.AddNode(node1id)
-		r.AddNode(node2id)
-		r.AddNode(node3id)
+		r.AddNode(node0.Id, node0.Host, node0.Port)
+		r.AddNode(node1.Id, node1.Host, node1.Port)
+		r.AddNode(node2.Id, node2.Host, node2.Port)
 
 		Convey("When node doesn't exist", func() {
 			Convey("Then it should return error", func() {
@@ -59,50 +66,55 @@ func TestRemoveNode(t *testing.T) {
 
 		Convey("When node exists", func() {
 			Convey("Then it should remove node", func() {
-				err := r.RemoveNode(node2id)
+				err := r.RemoveNode(node2.Id)
 				So(err, ShouldBeNil)
 
 				So(r.Nodes.Len(), ShouldEqual, 2)
 
-				So(r.Nodes[0].Id, ShouldEqual, node3id)
-				So(r.Nodes[1].Id, ShouldEqual, node1id)
+				// node 0 hash is lower than node 1, so this is sorted the order they appear in
+				So(r.Nodes[0].Id, ShouldEqual, node1.Id)
+				So(r.Nodes[1].Id, ShouldEqual, node0.Id)
 			})
 		})
 	})
 }
 
 func TestGet(t *testing.T) {
+	nodes_config := node.LoadNodesConfig(CONFIG_FILE)
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
 	Convey("Given ring with 1 node", t, func() {
 		r := NewRing()
-		r.AddNode(node1id)
+		r.AddNode(node1.Id, node1.Host, node1.Port)
 
 		Convey("Then it should return that node regardless of input", func() {
 			insertnode := r.Get("id")
-			So(insertnode, ShouldEqual, node1id)
+			So(insertnode, ShouldEqual, node1.Id)
 
 			insertnode = r.Get("anykey")
-			So(insertnode, ShouldEqual, node1id)
+			So(insertnode, ShouldEqual, node1.Id)
 		})
 	})
 
 	Convey("Given ring with multiple nodes", t, func() {
-		insertid := "justa"
+		insertid := "random_key"
 
 		r := NewRing()
-		r.AddNode(node1id)
-		r.AddNode(node2id)
-		r.AddNode(node3id)
+		r.AddNode(node0.Id, node0.Host, node0.Port)
+		r.AddNode(node1.Id, node1.Host, node1.Port)
+		r.AddNode(node2.Id, node2.Host, node2.Port)
 
 		Convey("Then it should return node closest", func() {
-			node1hash := node.HashId(node1id)
-			node3hash := node.HashId(node2id)
+			node0hash := node.HashId(node0.Id)
+			node1hash := node.HashId(node1.Id)
 			inserthash := node.HashId(insertid)
 
-			So(inserthash, ShouldBeLessThan, node1hash)
-			So(inserthash, ShouldBeGreaterThan, node3hash)
+			So(inserthash, ShouldBeGreaterThan, node1hash)
+			So(inserthash, ShouldBeLessThan, node0hash)
 
 			insertnode := r.Get(insertid)
-			So(insertnode, ShouldEqual, node1id)
+			So(insertnode, ShouldEqual, node0.Id)
 		})
 	})
 }
