@@ -1,3 +1,4 @@
+
 FROM golang:1.18
 
 WORKDIR /usr/src/app
@@ -8,6 +9,9 @@ RUN go mod download && go mod verify
 
 COPY . .
 
+WORKDIR /usr/src/app/client
 RUN go build
+WORKDIR /usr/src/app/client/cache_client
+ENV GODEBUG=x509sha1=1
 
-CMD ["./minicache","-config","configs/nodes-docker.json","-capacity","100","-verbose"]
+CMD ["go","test","-v"]

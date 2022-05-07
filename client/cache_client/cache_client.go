@@ -1,4 +1,4 @@
-package client
+package cache_client
 
 import (
 	"fmt"

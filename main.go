@@ -38,6 +38,6 @@ func main() {
 	go cache_server.StartLeaderHeartbeatMonitor()
 
 	// run HTTP server
-	log.Printf("Running REST API server on port %d...", *grpc_port)
+	log.Printf("Running REST API server on port %d...", *rest_port)
 	cache_server.RunHttpServer(*rest_port)
 }

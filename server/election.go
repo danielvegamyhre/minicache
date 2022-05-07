@@ -37,27 +37,27 @@ func (s *CacheServer) RunElection() {
 		// make status request rpc
 		res, err := client.GetPid(ctx, &pb.PidRequest{CallerPid: local_pid})
 		if err != nil {
-			s.logger.Infof("PID request to node %d failed", node.Id)
+			s.logger.Infof("PID request to node %s failed", node.Id)
 			continue
 		}
 		
 		// if response has a higher PID (use node id as tie-breaker), we send it an election request and wait to receive the election winner announcement.
-		s.logger.Infof("Received PID %d from node %d (vs local PID %d on node %d)", res.Pid, node.Id, local_pid, s.node_id)
+		s.logger.Infof("Received PID %d from node %s (vs local PID %d on node %s)", res.Pid, node.Id, local_pid, s.node_id)
 		if (local_pid < res.Pid) || (res.Pid == local_pid && s.node_id < node.Id) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			
-			s.logger.Infof("Sending election request to node %d", node.Id)
+			s.logger.Infof("Sending election request to node %s", node.Id)
 			_, err = client.RequestElection(ctx, &pb.ElectionRequest{CallerPid: local_pid, CallerNodeId: s.node_id})
 			if err != nil {
-				s.logger.Infof("Error requesting node %d run an election: %v", node.Id, err)
+				s.logger.Infof("Error requesting node %s run an election: %v", node.Id, err)
 			}
 
 			s.logger.Info("Waiting for decision...")
 			// if after 5 seconds we receive no winner announcement, start the election process over
 			select {
 			case s.leader_id = <-s.decision_chan:
-				s.logger.Infof("Received decision: Leader is node %d", s.leader_id)
+				s.logger.Infof("Received decision: Leader is node %s", s.leader_id)
 				s.election_status = NO_ELECTION_RUNNING
 				return	
 			case <-time.After(5*time.Second):
@@ -80,7 +80,7 @@ func (s *CacheServer) RunElection() {
 
 // Announce new leader to all nodes
 func (s *CacheServer) AnnounceNewLeader(winner string) {
-	s.logger.Infof("Announcing node %d won election",  winner)
+	s.logger.Infof("Announcing node %s won election",  winner)
 
 	// if no response from any higher node IDs, declare self the winner and announce to all
 	for _, node := range s.nodes_config.Nodes {
@@ -97,7 +97,7 @@ func (s *CacheServer) AnnounceNewLeader(winner string) {
 		// make status request rpc
 		_, err := client.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: winner})
 		if err != nil {
-			s.logger.Infof("Election winner announcement to node %d error: %v", node.Id, err)
+			s.logger.Infof("Election winner announcement to node %s error: %v", node.Id, err)
 			continue
 		}
 	}
@@ -172,7 +172,7 @@ func (s *CacheServer) GetHeartbeat(ctx context.Context, request *pb.HeartbeatReq
 	} else {
 		status = FOLLOWER
 	}
-	s.logger.Infof("Node %d returning status %s to node %d", s.node_id, status, request.CallerNodeId)
+	s.logger.Infof("Node %s returning status %s to node %s", s.node_id, status, request.CallerNodeId)
 	return &pb.HeartbeatResponse{Status: status, NodeId: s.node_id}, nil
 }
 
