@@ -18,11 +18,11 @@ func NewRing() *Ring {
 	return &Ring{Nodes: node.Nodes{}}
 }
 
-func (r *Ring) AddNode(id string, host string, port int32) {
+func (r *Ring) AddNode(id string, host string, rest_port int32, grpc_port int32) {
 	r.Lock()
 	defer r.Unlock()
 
-	node := node.NewNode(id, host, port)
+	node := node.NewNode(id, host, rest_port, grpc_port)
 	r.Nodes = append(r.Nodes, node)
 
 	sort.Sort(r.Nodes)

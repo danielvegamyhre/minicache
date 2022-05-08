@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"context"
+	"time"
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/ring"
 	"github.com/malwaredllc/minicache/pb"
@@ -35,7 +36,7 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 	nodes_config := node.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
 	for _, node := range nodes_config.Nodes {
-		ring.AddNode(node.Id, node.Host, node.Port)
+		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &ClientWrapper{Config: nodes_config, Ring: ring}
 }
@@ -47,7 +48,7 @@ func (c *ClientWrapper) Get(key string) string {
 	nodeInfo := c.Config.Nodes[nodeId]
 
 	// make request
-	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.Port))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.RestPort))
 
 	if err != nil {
         log.Fatal(err)
@@ -77,7 +78,7 @@ func (c *ClientWrapper) Put(key string, value string) string {
 	json.NewEncoder(b).Encode(payload)
 
 	// make request
-	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.Port)
+	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.RestPort)
 	req, err := http.NewRequest("POST", host, b)
 	if err != nil {
 	   log.Fatal(err)
@@ -96,6 +97,47 @@ func (c *ClientWrapper) Put(key string, value string) string {
         log.Fatal(err)
     }
 	return string(body)
+}
+
+func (c *ClientWrapper) GetGrpc(key string) {
+	// find node which contains the item
+	nodeId := c.Ring.Get(key)
+	nodeInfo := c.Config.Nodes[nodeId]
+
+	// make new grpc client
+	client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+
+	// create context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// make request
+	res, err := client.Get(ctx, &pb.GetRequest{Key: key})
+	if err != nil {
+		log.Fatalf("Error getting key '%s' from cache: %v", key, err)
+		return
+	}
+	log.Printf(res.GetData())
+}
+
+func (c *ClientWrapper) PutGrpc(key string, value string) {
+	// find node which contains the item
+	nodeId := c.Ring.Get(key)
+	nodeInfo := c.Config.Nodes[nodeId]
+
+	// make new grpc client
+	client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+
+	// create context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// make request
+	_, err := client.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+	if err != nil {
+		log.Fatalf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
+		return
+	}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
@@ -119,7 +161,7 @@ func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
 // Utility function to set up mTLS config and credentials
 func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed server's certificate
-	pemServerCA, err := ioutil.ReadFile("certs/ca-cert.pem")
+	pemServerCA, err := ioutil.ReadFile("../../certs/ca-cert.pem")
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +172,7 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 	}
 
 	// Load client's certificate and private key
-	clientCert, err := tls.LoadX509KeyPair("certs/client-cert.pem", "certs/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("../../certs/client-cert.pem", "../../certs/client-key.pem")
 	if err != nil {
 		return nil, err
 	}
