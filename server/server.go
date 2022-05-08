@@ -48,8 +48,8 @@ type CacheServer struct {
 }
 
 type Pair struct {
-	Key 	string		`json:"key"`
-	Value	string `json:"value"`	
+	Key 	string	`json:"key"`
+	Value	string 	`json:"value"`	
 }
 
 // Utility function for creating a new gRPC server secured with mTLS, and registering a cache server service with it.
@@ -283,7 +283,7 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 	}
 
 	// set up grpc connection
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.Port), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		panic(err)
 	}
