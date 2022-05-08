@@ -7,8 +7,16 @@ import (
 	"net/http"
 	"encoding/json"
 	"io/ioutil"
+	"crypto/tls"
+	"crypto/x509"
+	"context"
+	"time"
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/ring"
+	"github.com/malwaredllc/minicache/pb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+		
 )
 
 // Client wrapper for interacting with Identity Server
@@ -28,7 +36,7 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 	nodes_config := node.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
 	for _, node := range nodes_config.Nodes {
-		ring.AddNode(node.Id, node.Host, node.Port)
+		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &ClientWrapper{Config: nodes_config, Ring: ring}
 }
@@ -40,7 +48,7 @@ func (c *ClientWrapper) Get(key string) string {
 	nodeInfo := c.Config.Nodes[nodeId]
 
 	// make request
-	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.Port))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.RestPort))
 
 	if err != nil {
         log.Fatal(err)
@@ -70,7 +78,7 @@ func (c *ClientWrapper) Put(key string, value string) string {
 	json.NewEncoder(b).Encode(payload)
 
 	// make request
-	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.Port)
+	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.RestPort)
 	req, err := http.NewRequest("POST", host, b)
 	if err != nil {
 	   log.Fatal(err)
@@ -89,4 +97,91 @@ func (c *ClientWrapper) Put(key string, value string) string {
         log.Fatal(err)
     }
 	return string(body)
+}
+
+func (c *ClientWrapper) GetGrpc(key string) {
+	// find node which contains the item
+	nodeId := c.Ring.Get(key)
+	nodeInfo := c.Config.Nodes[nodeId]
+
+	// make new grpc client
+	client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+
+	// create context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// make request
+	res, err := client.Get(ctx, &pb.GetRequest{Key: key})
+	if err != nil {
+		log.Fatalf("Error getting key '%s' from cache: %v", key, err)
+		return
+	}
+	log.Printf(res.GetData())
+}
+
+func (c *ClientWrapper) PutGrpc(key string, value string) {
+	// find node which contains the item
+	nodeId := c.Ring.Get(key)
+	nodeInfo := c.Config.Nodes[nodeId]
+
+	// make new grpc client
+	client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+
+	// create context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// make request
+	_, err := client.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+	if err != nil {
+		log.Fatalf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
+		return
+	}
+}
+
+// Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
+func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+	// set up TLS
+	creds, err := LoadTLSCredentials()
+	if err != nil {
+		log.Fatalf("failed to create credentials: %v", err)
+	}
+
+	// set up connection
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", server_host, server_port), grpc.WithTransportCredentials(creds))
+	if err != nil {
+		panic(err)
+	}
+
+	// set up client
+	return pb.NewCacheServiceClient(conn)
+}
+
+// Utility function to set up mTLS config and credentials
+func LoadTLSCredentials() (credentials.TransportCredentials, error) {
+	// Load certificate of the CA who signed server's certificate
+	pemServerCA, err := ioutil.ReadFile("../../certs/ca-cert.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+
+	// Load client's certificate and private key
+	clientCert, err := tls.LoadX509KeyPair("../../certs/client-cert.pem", "../../certs/client-key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      certPool,
+	}
+
+	return credentials.NewTLS(config), nil
 }

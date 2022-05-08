@@ -8,6 +8,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -17,6 +18,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/codes"
+	empty "github.com/golang/protobuf/ptypes/empty"
 
 	"go.uber.org/zap"
 	"github.com/malwaredllc/minicache/pb"
@@ -44,8 +48,8 @@ type CacheServer struct {
 }
 
 type Pair struct {
-	Key 	string		`json:"key"`
-	Value	string `json:"value"`	
+	Key 	string	`json:"key"`
+	Value	string 	`json:"value"`	
 }
 
 // Utility function for creating a new gRPC server secured with mTLS, and registering a cache server service with it.
@@ -145,6 +149,36 @@ func (s *CacheServer) RunHttpServer(port int) {
 	s.router.Run(fmt.Sprintf(":%d", port))
 }
 
+// gRPC handler for getting item from cache
+func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	key, err := strconv.Atoi(req.Key)
+	if err != nil {
+		s.logger.Errorf("unable to convert %s to integer", req.Key)
+		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
+	}
+	value, err := s.cache.Get(key) 
+	if err != nil {
+		return &pb.GetResponse{Data: "key not found"}, nil
+	}
+	strvalue := strconv.Itoa(value)
+	return &pb.GetResponse{Data: strvalue}, nil
+}
+
+// gRPC handler for putting item in cache
+func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty, error) {
+	key, err := strconv.Atoi(req.Key)
+	if err != nil {
+		s.logger.Errorf("unable to convert key %s to integer", req.Key)
+		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
+	}
+	value, err := strconv.Atoi(req.Value)
+	if err != nil {
+		s.logger.Errorf("unable to convert value %s to integer", req.Value)
+		return nil, status.Errorf(codes.InvalidArgument, "value must be integer")
+	}
+	s.cache.Put(key, value)
+	return &empty.Empty{}, nil	
+}
 // Utility function for creating a new gRPC server secured with mTLS in test mode.
 // This runs the server in single-node mode.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
@@ -249,7 +283,7 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 	}
 
 	// set up grpc connection
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.Port), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		panic(err)
 	}
