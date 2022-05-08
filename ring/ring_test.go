@@ -18,7 +18,7 @@ func TestAddNode(t *testing.T) {
 	Convey("Given empty ring", t, func() {
 		Convey("Then it should add node", func() {
 			r := NewRing()
-			r.AddNode(node0.Id, node0.Host, node0.Port)
+			r.AddNode(node0.Id, node0.Host, node0.RestPort, node0.GrpcPort)
 
 			So(r.Nodes.Len(), ShouldEqual, 1)
 
@@ -29,8 +29,8 @@ func TestAddNode(t *testing.T) {
 
 		Convey("Then it should add node & sort by node id", func() {
 			r := NewRing()
-			r.AddNode(node1.Id, node1.Host, node1.Port)
-			r.AddNode(node2.Id, node2.Host, node2.Port)
+			r.AddNode(node1.Id, node1.Host, node1.RestPort, node1.GrpcPort)
+			r.AddNode(node2.Id, node2.Host, node2.RestPort, node2.GrpcPort)
 
 			So(r.Nodes.Len(), ShouldEqual, 2)
 
@@ -53,9 +53,9 @@ func TestRemoveNode(t *testing.T) {
 
 	Convey("Given ring with nodes", t, func() {
 		r := NewRing()
-		r.AddNode(node0.Id, node0.Host, node0.Port)
-		r.AddNode(node1.Id, node1.Host, node1.Port)
-		r.AddNode(node2.Id, node2.Host, node2.Port)
+		r.AddNode(node0.Id, node0.Host, node0.RestPort, node0.GrpcPort)
+		r.AddNode(node1.Id, node1.Host, node1.RestPort, node1.GrpcPort)
+		r.AddNode(node2.Id, node2.Host, node2.RestPort, node2.GrpcPort)
 
 		Convey("When node doesn't exist", func() {
 			Convey("Then it should return error", func() {
@@ -86,7 +86,7 @@ func TestGet(t *testing.T) {
 	node2 := nodes_config.Nodes["node2"]
 	Convey("Given ring with 1 node", t, func() {
 		r := NewRing()
-		r.AddNode(node1.Id, node1.Host, node1.Port)
+		r.AddNode(node1.Id, node1.Host, node1.RestPort, node1.GrpcPort)
 
 		Convey("Then it should return that node regardless of input", func() {
 			insertnode := r.Get("id")
@@ -101,9 +101,9 @@ func TestGet(t *testing.T) {
 		insertid := "random_key"
 
 		r := NewRing()
-		r.AddNode(node0.Id, node0.Host, node0.Port)
-		r.AddNode(node1.Id, node1.Host, node1.Port)
-		r.AddNode(node2.Id, node2.Host, node2.Port)
+		r.AddNode(node0.Id, node0.Host, node0.RestPort, node0.GrpcPort)
+		r.AddNode(node1.Id, node1.Host, node1.RestPort, node1.GrpcPort)
+		r.AddNode(node2.Id, node2.Host, node2.RestPort, node2.GrpcPort)
 
 		Convey("Then it should return node closest", func() {
 			node0hash := node.HashId(node0.Id)
