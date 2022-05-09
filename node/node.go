@@ -8,6 +8,7 @@ import (
 	"os"
 	"log"
 	"hash/crc32"
+	"github.com/malwaredllc/minicache/pb"
 )
 
 
@@ -24,15 +25,20 @@ type Node struct {
 	RestPort 			int32 	`json:"rest_port"`
 	GrpcPort 			int32 	`json:"grpc_port"`
 	HashId 				uint32
+	GrpcClient			pb.CacheServiceClient	
+}
+
+func (n *Node) SetGrpcClient(c pb.CacheServiceClient) {
+	n.GrpcClient = c
 }
 
 func NewNode(id string, host string, rest_port int32, grpc_port int32) *Node {
 	return &Node{
-		Id:     id,
-		Host:	host,
-		RestPort: 	rest_port,
-		GrpcPort: 	grpc_port,	
-		HashId: HashId(id),
+		Id:    		 	id,
+		Host:			host,
+		RestPort: 		rest_port,
+		GrpcPort: 		grpc_port,	
+		HashId: 		HashId(id),
 	}
 }
 
