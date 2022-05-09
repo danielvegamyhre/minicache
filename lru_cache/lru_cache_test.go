@@ -7,53 +7,53 @@ import (
 func TestCache1(t *testing.T) {
 	// new LRU cache with capacity of 2
 	capacity := 2
-	lru := NewLruCache("capacity")
+	lru := NewLruCache(capacity)
 
 	// test standard put and get
-	lru.Put("1,1")
-	lru.Put("2,2")
+	lru.Put("1","1")
+	lru.Put("2","2")
 	actual, err := lru.Get("1")
-	expected := 1
+	expected := "1"
 	AssertEqualNoError(t, expected, actual, err)
 
 	// test eviction of 2
-	lru.Put("3,3")
+	lru.Put("3","3")
 	actual, err = lru.Get("2")
-	expected = -1
+	expected = ""
 	AssertErrorNotNil(t, err)
 
 	// test eviction of 1
-	lru.Put("4,4")
+	lru.Put("4","4")
 	actual, err = lru.Get("1")
-	expected = -1
+	expected = ""
 	AssertErrorNotNil(t, err)	
 
 	// test 3 still in cache
 	actual, err = lru.Get("3")
-	expected = 3
+	expected = "3"
 	AssertEqualNoError(t, expected, actual, err)
 
 	// test 4 still in cache
 	actual, err = lru.Get("4")
-	expected = 4
+	expected = "4"
 	AssertEqualNoError(t, expected, actual, err)
 }
 
 func TestCache2(t *testing.T) {
 	// new LRU cache with capacity of 2
 	capacity := 2
-	lru := NewLruCache("capacity")	
+	lru := NewLruCache(capacity)	
 
 	// test updating existing key/value pairs
-	lru.Put("2,1")
-	lru.Put("2,2")
+	lru.Put("2","1")
+	lru.Put("2","2")
 	actual, err := lru.Get("2")
-	expected := 2
+	expected := "2"
 	AssertEqualNoError(t, expected, actual, err)
 
 	// test eviction policy
-	lru.Put("1,1")
-	lru.Put("4,1")
+	lru.Put("1","1")
+	lru.Put("4","1")
 	_, err = lru.Get("2")
 	AssertErrorNotNil(t, err)
 }
@@ -61,7 +61,7 @@ func TestCache2(t *testing.T) {
 func TestCache3(t *testing.T) {
 	// new LRU cache with capacity of 105
 	capacity := 105
-	lru := NewLruCache("capacity")		
+	lru := NewLruCache(capacity)		
 
 	// heavy duty test
 	lru.Put("33", "219")
@@ -84,7 +84,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("81", "261")
 	lru.Put("33", "58")
 	actual, err = lru.Get("3")
-	expected := 280
+	expected := "280"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("121", "308")
 	lru.Put("129", "263")
@@ -106,7 +106,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("128", "148")
 	lru.Put("52", "176")
 	actual, err = lru.Get("48")
-	expected = 261
+	expected = "261"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("48", "119")
 	lru.Put("10", "241")
@@ -128,7 +128,7 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("14")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("104")
-	expected = 38
+	expected = "38"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("77", "165")
 	lru.Put("60", "160")
@@ -140,7 +140,7 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("136")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("128")
-	expected = 148
+	expected = "148"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("131")
 	AssertErrorNotNil(t, err)
@@ -169,7 +169,7 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("59")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("100")
-	expected = 136
+	expected = "136"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("132")
 	AssertErrorNotNil(t, err)
@@ -186,7 +186,7 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("101")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("89")
-	expected = 153
+	expected = "153"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("20")
 	AssertErrorNotNil(t, err)
@@ -220,11 +220,11 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("61")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("60")
-	expected = 160
+	expected = "160"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("69", "272")
 	actual, err = lru.Get("46")
-	expected = 51
+	expected = "51"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("42", "264")
 	lru.Put("87", "126")
@@ -237,12 +237,12 @@ func TestCache3(t *testing.T) {
 	lru.Put("19", "124")
 	lru.Put("52", "70")
 	actual, err = lru.Get("131")
-	expected = 218
+	expected = "218"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("103")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("81")
-	expected = 261
+	expected = "261"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("126")
 	AssertErrorNotNil(t, err)
@@ -260,7 +260,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("99", "65")
 	lru.Put("105", "249")
 	actual, err = lru.Get("85")
-	expected = 193
+	expected = "193"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("108", "287")
 	lru.Put("96", "4")
@@ -280,7 +280,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("75", "23")
 	lru.Put("136", "280")
 	actual, err = lru.Get("119")
-	expected = 220
+	expected = "220"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("81", "272")
 	actual, err = lru.Get("106")
@@ -299,12 +299,12 @@ func TestCache3(t *testing.T) {
 	lru.Put("7", "70")
 	lru.Put("135", "212")
 	actual, err = lru.Get("59")
-	expected = 306
+	expected = "306"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("81", "201")
 	lru.Put("75", "305")
 	actual, err = lru.Get("101")
-	expected = 219
+	expected = "219"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("8", "250")
 	actual, err = lru.Get("38")
@@ -314,13 +314,13 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("105", "266")
 	actual, err = lru.Get("105")
-	expected = 266
+	expected = "266"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("85")
-	expected = 193
+	expected = "193"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("55")
-	expected = 90
+	expected = "90"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("6")
 	AssertErrorNotNil(t, err)
@@ -328,7 +328,7 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("126")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("102")
-	expected = 147
+	expected = "147"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("66")
 	AssertErrorNotNil(t, err)
@@ -336,13 +336,13 @@ func TestCache3(t *testing.T) {
 	lru.Put("127", "35")
 	lru.Put("117", "105")
 	actual, err = lru.Get("128")
-	expected = 148
+	expected = "148"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("102")
-	expected = 147
+	expected = "147"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("50")
-	expected = 131
+	expected = "131"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("24", "133")
 	lru.Put("40", "178")
@@ -351,21 +351,21 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("25")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("82")
-	expected = 291
+	expected = "291"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("129")
-	expected = 291
+	expected = "291"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("126", "12")
 	actual, err = lru.Get("45")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("40")
-	expected = 178
+	expected = "178"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("86")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("100")
-	expected = 136
+	expected = "136"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("30", "110")
 	actual, err = lru.Get("49")
@@ -373,14 +373,14 @@ func TestCache3(t *testing.T) {
 	lru.Put("47", "185")
 	lru.Put("123", "101")
 	actual, err = lru.Get("102")
-	expected = 147
+	expected = "147"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("5")
 	AssertErrorNotNil(t, err)
 	lru.Put("40", "267")
 	lru.Put("48", "155")
 	actual, err = lru.Get("108")
-	expected = 287
+	expected = "287"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("45")
 	AssertErrorNotNil(t, err)
@@ -393,17 +393,17 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("111")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("39")
-	expected = 183
+	expected = "183"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("69", "126")
 	lru.Put("113", "199")
 	lru.Put("21", "216")
 	actual, err = lru.Get("11")
-	expected = 174
+	expected = "174"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("117", "207")
 	actual, err = lru.Get("30")
-	expected = 110
+	expected = "110"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("97", "84")
 	actual, err = lru.Get("109")
@@ -417,7 +417,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("49", "89")
 	lru.Put("53", "311")
 	actual, err = lru.Get("126")
-	expected = 12
+	expected = "12"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("32", "153")
 	lru.Put("14", "296")
@@ -425,19 +425,19 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("14", "225")
 	actual, err = lru.Get("49")
-	expected = 89
+	expected = "89"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("75")
-	expected = 305
+	expected = "305"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("61", "241")
 	actual, err = lru.Get("7")
-	expected = 70
+	expected = "70"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("6")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("31")
-	expected = 94
+	expected = "94"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("75", "15")
 	actual, err = lru.Get("115")
@@ -449,32 +449,32 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("106")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("61")
-	expected = 241
+	expected = "241"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("53", "190")
 	actual, err = lru.Get("16")
-	expected = 176
+	expected = "176"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("12", "252")
 	actual, err = lru.Get("28")
-	expected = 220
+	expected = "220"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("111", "122")
 	actual, err = lru.Get("122")
 	AssertErrorNotNil(t, err)
 	lru.Put("10", "21")
 	actual, err = lru.Get("59")
-	expected = 306
+	expected = "306"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("72")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("39")
-	expected = 183
+	expected = "183"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("6")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("126")
-	expected = 12
+	expected = "12"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("131", "177")
 	lru.Put("105", "253")
@@ -482,7 +482,7 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("43", "311")
 	actual, err = lru.Get("79")
-	expected = 95
+	expected = "95"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("91", "32")
 	lru.Put("7", "141")
@@ -492,19 +492,19 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("79", "135")
 	actual, err = lru.Get("43")
-	expected = 311
+	expected = "311"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("94")
-	expected = 111
+	expected = "111"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("80", "182")
 	actual, err = lru.Get("53")
-	expected = 190
+	expected = "190"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("120", "309")
 	lru.Put("3", "109")
 	actual, err = lru.Get("97")
-	expected = 84
+	expected = "84"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("9", "128")
 	lru.Put("114", "121")
@@ -515,10 +515,10 @@ func TestCache3(t *testing.T) {
 	lru.Put("124", "86")
 	lru.Put("34", "145")
 	actual, err = lru.Get("131")
-	expected = 177
+	expected = "177"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("78")
-	expected = 157
+	expected = "157"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("86", "21")
 	actual, err = lru.Get("98")
@@ -531,20 +531,20 @@ func TestCache3(t *testing.T) {
 	lru.Put("26", "134")
 	lru.Put("8", "15")
 	actual, err = lru.Get("11")
-	expected = 174
+	expected = "174"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("84", "276")
 	lru.Put("81", "67")
 	actual, err = lru.Get("46")
-	expected = 51
+	expected = "51"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("39")
-	expected = 183
+	expected = "183"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("92")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("96")
-	expected = 4
+	expected = "4"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("89", "51")
 	lru.Put("136", "240")
@@ -555,22 +555,22 @@ func TestCache3(t *testing.T) {
 	lru.Put("24", "209")
 	lru.Put("82", "145")
 	actual, err = lru.Get("10")
-	expected = 21
+	expected = "21"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("104", "225")
 	lru.Put("120", "203")
 	lru.Put("121", "108")
 	lru.Put("11", "47")
 	actual, err = lru.Get("89")
-	expected = 51
+	expected = "51"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("80", "66")
 	actual, err = lru.Get("16")
-	expected = 176
+	expected = "176"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("95", "101")
 	actual, err = lru.Get("49")
-	expected = 89
+	expected = "89"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("1")
 	AssertErrorNotNil(t, err)
@@ -580,61 +580,61 @@ func TestCache3(t *testing.T) {
 	lru.Put("74", "313")
 	lru.Put("14", "118")
 	actual, err = lru.Get("16")
-	expected = 176
+	expected = "176"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("74")
-	expected = 313
+	expected = "313"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("88", "251")
 	actual, err = lru.Get("124")
-	expected = 86
+	expected = "86"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("58", "101")
 	lru.Put("42", "81")
 	actual, err = lru.Get("2")
-	expected = 229
+	expected = "229"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("133", "101")
 	actual, err = lru.Get("16")
-	expected = 176
+	expected = "176"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("1", "254")
 	lru.Put("25", "167")
 	lru.Put("53", "56")
 	lru.Put("73", "198")
 	actual, err = lru.Get("48")
-	expected = 294
+	expected = "294"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("30")
-	expected = 110
+	expected = "110"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("95")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("90", "102")
 	lru.Put("92", "56")
 	lru.Put("2", "130")
 	lru.Put("52", "11")
 	actual, err = lru.Get("9")
-	expected = 128
+	expected = "128"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("23")
-	expected = 49
+	expected = "49"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("53", "275")
 	lru.Put("23", "258")
 	actual, err = lru.Get("57")
-	expected = 82
+	expected = "82"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("136", "183")
 	lru.Put("75", "265")
 	actual, err = lru.Get("85")
-	expected = 193
+	expected = "193"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("68", "274")
 	lru.Put("15", "255")
 	actual, err = lru.Get("85")
-	expected = 193
+	expected = "193"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("33", "314")
 	lru.Put("101", "223")
@@ -644,20 +644,20 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("112")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("65")
-	expected = 85
+	expected = "85"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("31", "240")
 	lru.Put("40", "295")
 	lru.Put("99", "231")
 	actual, err = lru.Get("123")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("34", "43")
 	actual, err = lru.Get("87")
-	expected = 126
+	expected = "126"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("80")
-	expected = 66
+	expected = "66"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("47", "279")
 	lru.Put("89", "299")
@@ -674,19 +674,19 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("70")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("81")
-	expected = 67
+	expected = "67"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("40", "65")
 	actual, err = lru.Get("80")
-	expected = 66
+	expected = "66"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("80", "23")
 	lru.Put("76", "258")
 	actual, err = lru.Get("69")
-	expected = 126
+	expected = "126"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("133")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("123", "196")
 	lru.Put("119", "212")
@@ -695,38 +695,38 @@ func TestCache3(t *testing.T) {
 	lru.Put("20", "105")
 	lru.Put("61", "233")
 	actual, err = lru.Get("97")
-	expected = 84
+	expected = "84"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("128", "307")
 	actual, err = lru.Get("85")
-	expected = 184
+	expected = "184"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("80")
-	expected = 23
+	expected = "23"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("73")
-	expected = 198
+	expected = "198"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("30")
-	expected = 110
+	expected = "110"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("46", "44")
 	actual, err = lru.Get("95")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("121", "211")
 	lru.Put("48", "307")
 	actual, err = lru.Get("2")
-	expected = 130
+	expected = "130"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("27", "166")
 	actual, err = lru.Get("50")
-	expected = 131
+	expected = "131"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("75", "41")
 	lru.Put("101", "105")
 	actual, err = lru.Get("2")
-	expected = 130
+	expected = "130"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("110", "121")
 	lru.Put("32", "88")
@@ -740,11 +740,11 @@ func TestCache3(t *testing.T) {
 	lru.Put("83", "63")
 	lru.Put("5", "239")
 	actual, err = lru.Get("5")
-	expected = 239
+	expected = "239"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("68", "204")
 	actual, err = lru.Get("127")
-	expected = 35
+	expected = "35"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("42", "137")
 	actual, err = lru.Get("93")
@@ -753,20 +753,20 @@ func TestCache3(t *testing.T) {
 	lru.Put("40", "275")
 	lru.Put("7", "96")
 	actual, err = lru.Get("108")
-	expected = 287
+	expected = "287"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("104", "91")
 	actual, err = lru.Get("63")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("31")
-	expected = 240
+	expected = "240"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("31", "89")
 	actual, err = lru.Get("74")
-	expected = 313
+	expected = "313"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("81")
-	expected = 67
+	expected = "67"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("126", "148")
 	actual, err = lru.Get("107")
@@ -774,56 +774,56 @@ func TestCache3(t *testing.T) {
 	lru.Put("13", "28")
 	lru.Put("21", "139")
 	actual, err = lru.Get("114")
-	expected = 121
+	expected = "121"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("5")
-	expected = 239
+	expected = "239"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("89")
-	expected = 299
+	expected = "299"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("133")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("20")
-	expected = 105
+	expected = "105"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("96", "135")
 	lru.Put("86", "100")
 	lru.Put("83", "75")
 	actual, err = lru.Get("14")
-	expected = 118
+	expected = "118"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("26", "195")
 	actual, err = lru.Get("37")
-	expected = 160
+	expected = "160"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("1", "287")
 	actual, err = lru.Get("79")
-	expected = 135
+	expected = "135"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("15")
-	expected = 255
+	expected = "255"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("6")
 	AssertErrorNotNil(t, err)
 	lru.Put("68", "11")
 	actual, err = lru.Get("52")
-	expected = 11
+	expected = "11"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("124", "80")
 	lru.Put("123", "277")
 	lru.Put("99", "281")
 	actual, err = lru.Get("133")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("90")
-	expected = 258
+	expected = "258"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("45")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("127")
-	expected = 35
+	expected = "35"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("9", "68")
 	lru.Put("123", "6")
@@ -832,66 +832,66 @@ func TestCache3(t *testing.T) {
 	lru.Put("23", "174")
 	lru.Put("69", "295")
 	actual, err = lru.Get("32")
-	expected = 88
+	expected = "88"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("37")
-	expected = 160
+	expected = "160"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("1", "64")
 	lru.Put("48", "116")
 	actual, err = lru.Get("68")
-	expected = 11
+	expected = "11"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("117", "173")
 	lru.Put("16", "89")
 	actual, err = lru.Get("84")
-	expected = 276
+	expected = "276"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("28", "234")
 	actual, err = lru.Get("129")
-	expected = 291
+	expected = "291"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("89")
-	expected = 299
+	expected = "299"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("55")
-	expected = 90
+	expected = "90"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("83")
-	expected = 75
+	expected = "75"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("99", "264")
 	actual, err = lru.Get("129")
-	expected = 291
+	expected = "291"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("84")
-	expected = 276
+	expected = "276"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("14")
-	expected = 118
+	expected = "118"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("26", "274")
 	actual, err = lru.Get("109")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("110")
-	expected = 121
+	expected = "121"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("96", "120")
 	lru.Put("128", "207")
 	actual, err = lru.Get("12")
-	expected = 252
+	expected = "252"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("99", "233")
 	lru.Put("20", "305")
 	lru.Put("26", "24")
 	lru.Put("102", "32")
 	actual, err = lru.Get("82")
-	expected = 145
+	expected = "145"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("16", "30")
 	lru.Put("5", "244")
 	actual, err = lru.Get("130")
-	expected = 191
+	expected = "191"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("109", "36")
 	lru.Put("134", "162")
@@ -908,7 +908,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("57", "108")
 	lru.Put("28", "229")
 	actual, err = lru.Get("83")
-	expected = 75
+	expected = "75"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("1", "34")
 	lru.Put("93", "151")
@@ -917,26 +917,26 @@ func TestCache3(t *testing.T) {
 	lru.Put("57", "68")
 	lru.Put("42", "137")
 	actual, err = lru.Get("35")
-	expected = 65
+	expected = "65"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("80")
-	expected = 23
+	expected = "23"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("10", "288")
 	actual, err = lru.Get("21")
-	expected = 139
+	expected = "139"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("115")
-	expected = 164
+	expected = "164"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("131")
-	expected = 177
+	expected = "177"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("30")
-	expected = 165
+	expected = "165"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("43")
-	expected = 311
+	expected = "311"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("97", "262")
 	lru.Put("55", "146")
@@ -946,21 +946,21 @@ func TestCache3(t *testing.T) {
 	lru.Put("82", "107")
 	lru.Put("14", "151")
 	actual, err = lru.Get("77")
-	expected = 184
+	expected = "184"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("60", "42")
 	lru.Put("90", "309")
 	actual, err = lru.Get("90")
-	expected = 309
+	expected = "309"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("131", "220")
 	actual, err = lru.Get("86")
-	expected = 100
+	expected = "100"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("106", "85")
 	lru.Put("85", "254")
 	actual, err = lru.Get("14")
-	expected = 151
+	expected = "151"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("66", "262")
 	lru.Put("88", "243")
@@ -969,24 +969,24 @@ func TestCache3(t *testing.T) {
 	lru.Put("50", "301")
 	lru.Put("118", "91")
 	actual, err = lru.Get("25")
-	expected = 167
+	expected = "167"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("105")
-	expected = 90
+	expected = "90"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("100")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("89")
-	expected = 299
+	expected = "299"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("111", "152")
 	lru.Put("65", "24")
 	lru.Put("41", "264")
 	actual, err = lru.Get("117")
-	expected = 173
+	expected = "173"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("117")
-	expected = 173
+	expected = "173"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("80", "45")
 	actual, err = lru.Get("38")
@@ -1000,10 +1000,10 @@ func TestCache3(t *testing.T) {
 	lru.Put("118", "2")
 	lru.Put("50", "164")
 	actual, err = lru.Get("74")
-	expected = 313
+	expected = "313"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("80")
-	expected = 45
+	expected = "45"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("48", "308")
 	lru.Put("109", "82")
@@ -1015,33 +1015,33 @@ func TestCache3(t *testing.T) {
 	lru.Put("52", "278")
 	lru.Put("98", "151")
 	actual, err = lru.Get("12")
-	expected = 252
+	expected = "252"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("25")
-	expected = 167
+	expected = "167"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("18", "254")
 	lru.Put("24", "40")
 	actual, err = lru.Get("119")
-	expected = 212
+	expected = "212"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("66", "44")
 	lru.Put("61", "19")
 	lru.Put("80", "132")
 	lru.Put("62", "111")
 	actual, err = lru.Get("80")
-	expected = 132
+	expected = "132"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("57", "188")
 	actual, err = lru.Get("132")
-	expected = 94
+	expected = "94"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("42")
-	expected = 137
+	expected = "137"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("18", "314")
 	actual, err = lru.Get("48")
-	expected = 308
+	expected = "308"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("86", "138")
 	actual, err = lru.Get("8")
@@ -1051,25 +1051,25 @@ func TestCache3(t *testing.T) {
 	lru.Put("17", "104")
 	lru.Put("112", "86")
 	actual, err = lru.Get("25")
-	expected = 167
+	expected = "167"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("129", "119")
 	lru.Put("93", "44")
 	actual, err = lru.Get("115")
-	expected = 164
+	expected = "164"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("33", "36")
 	lru.Put("85", "190")
 	actual, err = lru.Get("10")
-	expected = 288
+	expected = "288"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("52", "182")
 	lru.Put("76", "182")
 	actual, err = lru.Get("109")
-	expected = 82
+	expected = "82"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("118")
-	expected = 2
+	expected = "2"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("82", "301")
 	lru.Put("26", "158")
@@ -1080,22 +1080,22 @@ func TestCache3(t *testing.T) {
 	lru.Put("13", "299")
 	lru.Put("117", "183")
 	actual, err = lru.Get("115")
-	expected = 164
+	expected = "164"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("89")
-	expected = 299
+	expected = "299"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("42")
-	expected = 137
+	expected = "137"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("11", "285")
 	lru.Put("30", "144")
 	actual, err = lru.Get("69")
-	expected = 295
+	expected = "295"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("31", "53")
 	actual, err = lru.Get("21")
-	expected = 139
+	expected = "139"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("96", "162")
 	lru.Put("4", "227")
@@ -1108,18 +1108,18 @@ func TestCache3(t *testing.T) {
 	lru.Put("9", "40")
 	lru.Put("48", "273")
 	actual, err = lru.Get("95")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("35")
-	expected = 65
+	expected = "65"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("62", "267")
 	lru.Put("88", "161")
 	actual, err = lru.Get("59")
-	expected = 249
+	expected = "249"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("85")
-	expected = 190
+	expected = "190"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("131", "53")
 	lru.Put("114", "98")
@@ -1135,21 +1135,21 @@ func TestCache3(t *testing.T) {
 	actual, err = lru.Get("116")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("14")
-	expected = 151
+	expected = "151"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("61", "104")
 	lru.Put("44", "161")
 	lru.Put("60", "132")
 	lru.Put("21", "310")
 	actual, err = lru.Get("89")
-	expected = 203
+	expected = "203"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("109", "237")
 	actual, err = lru.Get("105")
-	expected = 90
+	expected = "90"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("32")
-	expected = 88
+	expected = "88"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("78", "101")
 	lru.Put("14", "71")
@@ -1157,65 +1157,65 @@ func TestCache3(t *testing.T) {
 	lru.Put("102", "33")
 	lru.Put("44", "29")
 	actual, err = lru.Get("85")
-	expected = 190
+	expected = "190"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("37")
-	expected = 160
+	expected = "160"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("68", "175")
 	lru.Put("116", "182")
 	lru.Put("42", "47")
 	actual, err = lru.Get("9")
-	expected = 40
+	expected = "40"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("64", "37")
 	lru.Put("23", "32")
 	lru.Put("11", "124")
 	lru.Put("130", "189")
 	actual, err = lru.Get("65")
-	expected = 24
+	expected = "24"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("33", "219")
 	lru.Put("79", "253")
 	actual, err = lru.Get("80")
-	expected = 132
+	expected = "132"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("16")
-	expected = 30
+	expected = "30"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("38", "18")
 	lru.Put("35", "67")
 	actual, err = lru.Get("107")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("88")
-	expected = 161
+	expected = "161"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("37", "13")
 	lru.Put("71", "188")
 	actual, err = lru.Get("35")
-	expected = 67
+	expected = "67"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("58", "268")
 	lru.Put("18", "260")
 	lru.Put("73", "23")
 	lru.Put("28", "102")
 	actual, err = lru.Get("129")
-	expected = 119
+	expected = "119"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("88")
-	expected = 161
+	expected = "161"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("65")
-	expected = 24
+	expected = "24"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("80")
-	expected = 132
+	expected = "132"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("119", "146")
 	actual, err = lru.Get("113")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("62")
-	expected = 267
+	expected = "267"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("123", "138")
 	lru.Put("18", "1")
@@ -1227,70 +1227,70 @@ func TestCache3(t *testing.T) {
 	lru.Put("76", "132")
 	lru.Put("121", "191")
 	actual, err = lru.Get("4")
-	expected = 227
+	expected = "227"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("8")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("117")
-	expected = 183
+	expected = "183"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("11", "118")
 	actual, err = lru.Get("43")
-	expected = 311
+	expected = "311"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("69")
-	expected = 295
+	expected = "295"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("136")
 	AssertErrorNotNil(t, err)
 	lru.Put("66", "298")
 	actual, err = lru.Get("25")
-	expected = 167
+	expected = "167"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("71")
-	expected = 188
+	expected = "188"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("100")
-	expected = 47
+	expected = "47"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("26", "141")
 	lru.Put("53", "256")
 	lru.Put("111", "205")
 	lru.Put("126", "106")
 	actual, err = lru.Get("43")
-	expected = 311
+	expected = "311"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("14", "39")
 	lru.Put("44", "41")
 	lru.Put("23", "230")
 	actual, err = lru.Get("131")
-	expected = 53
+	expected = "53"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("53")
-	expected = 256
+	expected = "256"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("104", "268")
 	actual, err = lru.Get("30")
-	expected = 144
+	expected = "144"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("108", "48")
 	lru.Put("72", "45")
 	actual, err = lru.Get("58")
-	expected = 268
+	expected = "268"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("46")
 	AssertErrorNotNil(t, err)
 	lru.Put("128", "301")
 	actual, err = lru.Get("71")
-	expected = 188
+	expected = "188"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("99")
-	expected = 233
+	expected = "233"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("113")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("121")
-	expected = 191
+	expected = "191"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("130", "122")
 	lru.Put("102", "5")
@@ -1308,17 +1308,17 @@ func TestCache3(t *testing.T) {
 	lru.Put("29", "82")
 	lru.Put("83", "278")
 	actual, err = lru.Get("131")
-	expected = 53
+	expected = "53"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("56", "33")
 	actual, err = lru.Get("123")
-	expected = 138
+	expected = "138"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("11")
-	expected = 118
+	expected = "118"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("119")
-	expected = 146
+	expected = "146"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("119", "1")
 	lru.Put("48", "52")
@@ -1331,14 +1331,14 @@ func TestCache3(t *testing.T) {
 	lru.Put("93", "69")
 	lru.Put("70", "98")
 	actual, err = lru.Get("68")
-	expected = 175
+	expected = "175"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("4", "3")
 	lru.Put("92", "173")
 	lru.Put("114", "65")
 	lru.Put("7", "309")
 	actual, err = lru.Get("31")
-	expected = 53
+	expected = "53"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("107", "271")
 	lru.Put("110", "69")
@@ -1355,43 +1355,43 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("84", "95")
 	actual, err = lru.Get("76")
-	expected = 132
+	expected = "132"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("71", "31")
 	lru.Put("72", "171")
 	lru.Put("35", "123")
 	actual, err = lru.Get("32")
-	expected = 88
+	expected = "88"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("73", "85")
 	actual, err = lru.Get("94")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("128")
-	expected = 301
+	expected = "301"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("28")
-	expected = 102
+	expected = "102"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("38")
-	expected = 79
+	expected = "79"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("109")
-	expected = 237
+	expected = "237"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("85", "197")
 	lru.Put("10", "41")
 	lru.Put("71", "50")
 	actual, err = lru.Get("128")
-	expected = 301
+	expected = "301"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("3", "55")
 	lru.Put("15", "9")
 	lru.Put("127", "215")
 	actual, err = lru.Get("17")
-	expected = 104
+	expected = "104"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("37")
-	expected = 13
+	expected = "13"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("111", "272")
 	lru.Put("79", "169")
@@ -1406,7 +1406,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("15", "35")
 	lru.Put("117", "36")
 	actual, err = lru.Get("127")
-	expected = 215
+	expected = "215"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("36")
 	AssertErrorNotNil(t, err)
@@ -1417,16 +1417,16 @@ func TestCache3(t *testing.T) {
 	lru.Put("77", "64")
 	lru.Put("26", "101")
 	actual, err = lru.Get("99")
-	expected = 233
+	expected = "233"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("36", "96")
 	lru.Put("84", "129")
 	lru.Put("125", "264")
 	actual, err = lru.Get("43")
-	expected = 311
+	expected = "311"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("38")
-	expected = 79
+	expected = "79"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("24", "76")
 	lru.Put("45", "2")
@@ -1438,21 +1438,21 @@ func TestCache3(t *testing.T) {
 	lru.Put("90", "54")
 	lru.Put("88", "199")
 	actual, err = lru.Get("23")
-	expected = 230
+	expected = "230"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("87", "19")
 	lru.Put("11", "19")
 	actual, err = lru.Get("24")
-	expected = 76
+	expected = "76"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("57")
-	expected = 188
+	expected = "188"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("4")
-	expected = 3
+	expected = "3"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("40")
-	expected = 264
+	expected = "264"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("133", "286")
 	lru.Put("127", "231")
@@ -1460,13 +1460,13 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("52", "196")
 	actual, err = lru.Get("27")
-	expected = 127
+	expected = "127"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("10")
-	expected = 41
+	expected = "41"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("93")
-	expected = 69
+	expected = "69"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("115", "143")
 	lru.Put("62", "64")
@@ -1476,7 +1476,7 @@ func TestCache3(t *testing.T) {
 	lru.Put("117", "270")
 	lru.Put("116", "6")
 	actual, err = lru.Get("32")
-	expected = 24
+	expected = "24"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("135")
 	AssertErrorNotNil(t, err)
@@ -1486,10 +1486,10 @@ func TestCache3(t *testing.T) {
 	lru.Put("89", "30")
 	lru.Put("27", "14")
 	actual, err = lru.Get("100")
-	expected = 47
+	expected = "47"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("61")
-	expected = 104
+	expected = "104"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("99", "41")
 	lru.Put("88", "12")
@@ -1497,44 +1497,44 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("52", "203")
 	actual, err = lru.Get("65")
-	expected = 24
+	expected = "24"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("62", "78")
 	lru.Put("104", "276")
 	lru.Put("105", "307")
 	actual, err = lru.Get("7")
-	expected = 93
+	expected = "93"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("23", "123")
 	actual, err = lru.Get("22")
 	AssertErrorNotNil(t, err)
 	lru.Put("35", "299")
 	actual, err = lru.Get("69")
-	expected = 295
+	expected = "295"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("11")
-	expected = 69
+	expected = "69"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("14", "112")
 	actual, err = lru.Get("115")
-	expected = 143
+	expected = "143"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("112")
-	expected = 86
+	expected = "86"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("108")
-	expected = 48
+	expected = "48"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("110", "165")
 	lru.Put("83", "165")
 	lru.Put("36", "260")
 	lru.Put("54", "73")
 	actual, err = lru.Get("36")
-	expected = 260
+	expected = "260"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("93", "69")
 	actual, err = lru.Get("134")
-	expected = 290
+	expected = "290"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("125", "96")
 	lru.Put("74", "127")
@@ -1543,12 +1543,12 @@ func TestCache3(t *testing.T) {
 	lru.Put("87", "45")
 	lru.Put("31", "266")
 	actual, err = lru.Get("10")
-	expected = 41
+	expected = "41"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("114", "206")
 	lru.Put("49", "141")
 	actual, err = lru.Get("82")
-	expected = 283
+	expected = "283"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("92", "3")
 	lru.Put("91", "160")
@@ -1559,12 +1559,12 @@ func TestCache3(t *testing.T) {
 	lru.Put("23", "296")
 	lru.Put("134", "120")
 	actual, err = lru.Get("6")
-	expected = 123
+	expected = "123"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("5", "283")
 	lru.Put("117", "68")
 	actual, err = lru.Get("35")
-	expected = 299
+	expected = "299"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("120")
 	AssertErrorNotNil(t, err)
@@ -1573,11 +1573,11 @@ func TestCache3(t *testing.T) {
 	lru.Put("118", "113")
 	lru.Put("84", "106")
 	actual, err = lru.Get("23")
-	expected = 296
+	expected = "296"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("15", "240")
 	actual, err = lru.Get("37")
-	expected = 13
+	expected = "13"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("52", "256")
 	lru.Put("119", "116")
@@ -1589,23 +1589,23 @@ func TestCache3(t *testing.T) {
 	lru.Put("8", "189")
 	lru.Put("96", "220")
 	actual, err = lru.Get("104")
-	expected = 276
+	expected = "276"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("72", "106")
 	lru.Put("23", "170")
 	lru.Put("67", "209")
 	lru.Put("70", "39")
 	actual, err = lru.Get("18")
-	expected = 1
+	expected = "1"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("6")
-	expected = 123
+	expected = "123"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("34")
 	AssertErrorNotNil(t, err)
 	lru.Put("121", "157")
 	actual, err = lru.Get("16")
-	expected = 240
+	expected = "240"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("19")
 	AssertErrorNotNil(t, err)
@@ -1614,47 +1614,47 @@ func TestCache3(t *testing.T) {
 	lru.Put("33", "143")
 	lru.Put("88", "133")
 	actual, err = lru.Get("88")
-	expected = 133
+	expected = "133"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("5", "49")
 	actual, err = lru.Get("38")
-	expected = 79
+	expected = "79"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("110")
-	expected = 305
+	expected = "305"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("67")
-	expected = 209
+	expected = "209"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("23", "227")
 	actual, err = lru.Get("68")
-	expected = 175
+	expected = "175"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("3")
-	expected = 55
+	expected = "55"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("27", "265")
 	actual, err = lru.Get("31")
-	expected = 266
+	expected = "266"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("13", "103")
 	actual, err = lru.Get("116")
-	expected = 6
+	expected = "6"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("111", "282")
 	lru.Put("43", "71")
 	actual, err = lru.Get("134")
-	expected = 120
+	expected = "120"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("70", "141")
 	actual, err = lru.Get("14")
-	expected = 157
+	expected = "157"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("119")
-	expected = 116
+	expected = "116"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("43")
-	expected = 71
+	expected = "71"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("122")
 	AssertErrorNotNil(t, err)
@@ -1664,58 +1664,58 @@ func TestCache3(t *testing.T) {
 	AssertErrorNotNil(t, err)
 	lru.Put("42", "140")
 	actual, err = lru.Get("83")
-	expected = 283
+	expected = "283"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("92")
-	expected = 3
+	expected = "3"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("106")
 	AssertErrorNotNil(t, err)
 	actual, err = lru.Get("28")
-	expected = 102
+	expected = "102"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("57", "139")
 	lru.Put("36", "257")
 	lru.Put("30", "204")
 	actual, err = lru.Get("72")
-	expected = 106
+	expected = "106"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("105", "243")
 	actual, err = lru.Get("16")
-	expected = 240
+	expected = "240"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("74", "25")
 	actual, err = lru.Get("22")
 	AssertErrorNotNil(t, err)
 	lru.Put("118", "144")
 	actual, err = lru.Get("133")
-	expected = 286
+	expected = "286"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("71")
-	expected = 50
+	expected = "50"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("99", "21")
 	actual, err = lru.Get("26")
-	expected = 101
+	expected = "101"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("35")
-	expected = 299
+	expected = "299"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("89", "209")
 	lru.Put("106", "158")
 	lru.Put("76", "63")
 	lru.Put("112", "216")
 	actual, err = lru.Get("128")
-	expected = 301
+	expected = "301"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("54")
-	expected = 73
+	expected = "73"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("16", "165")
 	lru.Put("76", "206")
 	lru.Put("69", "253")
 	actual, err = lru.Get("23")
-	expected = 227
+	expected = "227"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("54", "111")
 	actual, err = lru.Get("80")
@@ -1723,68 +1723,68 @@ func TestCache3(t *testing.T) {
 	lru.Put("111", "72")
 	lru.Put("95", "217")
 	actual, err = lru.Get("118")
-	expected = 144
+	expected = "144"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("4", "146")
 	actual, err = lru.Get("47")
 	AssertErrorNotNil(t, err)
 	lru.Put("108", "290")
 	actual, err = lru.Get("43")
-	expected = 71
+	expected = "71"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("70", "8")
 	actual, err = lru.Get("117")
-	expected = 68
+	expected = "68"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("121")
-	expected = 157
+	expected = "157"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("42", "220")
 	actual, err = lru.Get("48")
-	expected = 52
+	expected = "52"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("32")
-	expected = 24
+	expected = "24"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("68", "213")
 	lru.Put("30", "157")
 	lru.Put("62", "68")
 	actual, err = lru.Get("58")
-	expected = 268
+	expected = "268"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("125", "283")
 	lru.Put("132", "45")
 	actual, err = lru.Get("85")
-	expected = 197
+	expected = "197"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("92")
-	expected = 3
+	expected = "3"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("23", "257")
 	actual, err = lru.Get("74")
-	expected = 25
+	expected = "25"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("18", "256")
 	actual, err = lru.Get("90")
-	expected = 54
+	expected = "54"
 	AssertEqualNoError(t, expected, actual, err)
 	lru.Put("10", "158")
 	lru.Put("57", "34")
 	actual, err = lru.Get("27")
-	expected = 265
+	expected = "265"
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("107")
-	expected = 271
+	expected = "271"
 	AssertEqualNoError(t, expected, actual, err)	
 }
 
 func AssertEqualNoError(t *testing.T, expected interface{}, actual interface{}, err error) {
-	t.Helper("")
+	t.Helper()
 	if err != nil {
 		t.Errorf("error: %v", err)
 	}
 	if expected != actual {
-		t.Errorf("expected %d", "received %d", expected, actual)
+		t.Errorf("expected %s, received %s", expected, actual)
 	}
 }
 
