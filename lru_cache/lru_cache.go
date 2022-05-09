@@ -8,18 +8,18 @@ import (
 )
 
 // doubly-linked list node
-type Node struct {
-    prev    *Node
-    next    *Node
-    key     int
-    val     int
+type LLNode struct {
+    prev    *LLNode
+    next    *LLNode
+    key     string
+    val     string
 }
 
 // Lru cache which uses a hashmap and doubly-linked list to acheive O(1) time for get/put/evict operations
 type LruCache struct {
-    cache       map[int]*Node
-    head        *Node
-    tail        *Node
+    cache       map[string]*LLNode
+    head        *LLNode
+    tail        *LLNode
     capacity    int
     size        int
     mutex       sync.RWMutex
@@ -28,9 +28,9 @@ type LruCache struct {
 // initialize and return new lru cache of specified capacity
 func NewLruCache(capacity int) LruCache {
     lru_cache := LruCache{
-        cache:      make(map[int]*Node, capacity),
-        head:       &Node{prev: nil, next: nil, key: -1, val: -1},
-        tail:       &Node{prev: nil, next: nil, key: -1, val: -1},
+        cache:      make(map[string]*LLNode, capacity),
+        head:       &LLNode{prev: nil, next: nil, key: "", val: ""},
+        tail:       &LLNode{prev: nil, next: nil, key: "", val: ""},
         capacity:   capacity,
         size:       0,
     }
@@ -40,7 +40,7 @@ func NewLruCache(capacity int) LruCache {
 }
 
 
-func (lru *LruCache) Get(key int) (int, error) {
+func (lru *LruCache) Get(key string) (string, error) {
     // read lock
     lru.mutex.RLock()
     defer lru.mutex.RUnlock()
@@ -51,15 +51,15 @@ func (lru *LruCache) Get(key int) (int, error) {
         return node.val, nil
     }
     // case 2: key does not exist
-    return -1, errors.New("element does not exist in cache")
+    return "", errors.New("element does not exist in cache")
 }
 
 
-func (lru *LruCache) Put(key int, value int)  {
+func (lru *LruCache) Put(key string, value string)  {
     // write lock
     lru.mutex.Lock()
     defer lru.mutex.Unlock()
-    
+
     // case 1: in cache already
     if node, ok := lru.cache[key]; ok {
         // update value and move to head
@@ -69,7 +69,7 @@ func (lru *LruCache) Put(key int, value int)  {
     }
     
     // case 2: create node and add to head
-    node := Node{prev: lru.head, next: lru.head.next, key: key, val: value}
+    node := LLNode{prev: lru.head, next: lru.head.next, key: key, val: value}
         
     // map from key to node ptr
     lru.cache[key] = &node
@@ -92,7 +92,7 @@ func (lru *LruCache) Put(key int, value int)  {
     }
 }
 
-func (lru *LruCache) moveNodeToHead(node *Node) {
+func (lru *LruCache) moveNodeToHead(node *LLNode) {
     // remove from middle
     prev := node.prev
     next := node.next
