@@ -7,7 +7,7 @@ import (
 )
 
 // 10 goroutines make 1k requests each
-func Test10kConcurrentRestApiPuts(t *testing.T) {
+func Test10kConcurrentRestApiPutsDocker(t *testing.T) {
 	c := NewClientWrapper("../../configs/nodes-docker.json")
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -23,7 +23,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	wg.Wait()
 }
 
-func Test10kConcurrentGrpcPuts(t *testing.T) {
+func Test10kConcurrentGrpcPutsDocker(t *testing.T) {
 	c := NewClientWrapper("../../configs/nodes-docker.json")
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {

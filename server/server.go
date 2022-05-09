@@ -18,8 +18,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/codes"
 	empty "github.com/golang/protobuf/ptypes/empty"
 
 	"go.uber.org/zap"
@@ -27,7 +25,6 @@ import (
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/lru_cache"
 	"sync"
-	"strconv"
 
     "github.com/gin-gonic/gin"
 )
@@ -112,12 +109,7 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 func (s *CacheServer) GetHandler(c *gin.Context) {
 	result := make(chan gin.H)
 	go func(ctx *gin.Context) {
-		key, err := strconv.Atoi(c.Param("key"))
-		if err != nil {
-			s.logger.Errorf("error getting key from request context: %v", err)
-			return
-		}
-		value, err := s.cache.Get(key)
+		value, err := s.cache.Get(c.Param("key"))
 		if err != nil {
 			result <- gin.H{"message": "key not found"}
 		} else {
@@ -137,10 +129,8 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 			s.logger.Errorf("unable to deserialize key-value pair from json")
 			return
 		}
-		key, _ := strconv.Atoi(newPair.Key)
-		value, _ := strconv.Atoi(newPair.Value)
-		s.cache.Put(key, value)
-		result <- gin.H{"key": key, "value": value}
+		s.cache.Put(newPair.Key, newPair.Value)
+		result <- gin.H{"key": newPair.Key, "value": newPair.Value}
 	}(c.Copy())
     c.IndentedJSON(http.StatusCreated, <-result)
 }
@@ -151,32 +141,16 @@ func (s *CacheServer) RunHttpServer(port int) {
 
 // gRPC handler for getting item from cache
 func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	key, err := strconv.Atoi(req.Key)
-	if err != nil {
-		s.logger.Errorf("unable to convert %s to integer", req.Key)
-		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
-	}
-	value, err := s.cache.Get(key) 
+	value, err := s.cache.Get(req.Key)
 	if err != nil {
 		return &pb.GetResponse{Data: "key not found"}, nil
 	}
-	strvalue := strconv.Itoa(value)
-	return &pb.GetResponse{Data: strvalue}, nil
+	return &pb.GetResponse{Data: value}, nil
 }
 
 // gRPC handler for putting item in cache
 func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty, error) {
-	key, err := strconv.Atoi(req.Key)
-	if err != nil {
-		s.logger.Errorf("unable to convert key %s to integer", req.Key)
-		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
-	}
-	value, err := strconv.Atoi(req.Value)
-	if err != nil {
-		s.logger.Errorf("unable to convert value %s to integer", req.Value)
-		return nil, status.Errorf(codes.InvalidArgument, "value must be integer")
-	}
-	s.cache.Put(key, value)
+	s.cache.Put(req.Key, req.Value)
 	return &empty.Empty{}, nil	
 }
 // Utility function for creating a new gRPC server secured with mTLS in test mode.
