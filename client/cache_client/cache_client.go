@@ -16,7 +16,7 @@ import (
 	"github.com/malwaredllc/minicache/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-		
+	"google.golang.org/grpc/keepalive"	
 )
 
 // Client wrapper for interacting with Identity Server
@@ -36,6 +36,8 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 	nodes_config := node.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
 	for _, node := range nodes_config.Nodes {
+		c := NewCacheClient(node.Host, int(node.GrpcPort))
+		node.SetGrpcClient(c)
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &ClientWrapper{Config: nodes_config, Ring: ring}
@@ -105,14 +107,14 @@ func (c *ClientWrapper) GetGrpc(key string) {
 	nodeInfo := c.Config.Nodes[nodeId]
 
 	// make new grpc client
-	client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+	// client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
 
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// make request
-	res, err := client.Get(ctx, &pb.GetRequest{Key: key})
+	res, err := nodeInfo.GrpcClient.Get(ctx, &pb.GetRequest{Key: key})
 	if err != nil {
 		log.Fatalf("Error getting key '%s' from cache: %v", key, err)
 		return
@@ -126,37 +128,20 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 	nodeInfo := c.Config.Nodes[nodeId]
 
 	// make new grpc client
-	client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+	// client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
 
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// make request
-	_, err := client.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+	_, err := nodeInfo.GrpcClient.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 	if err != nil {
 		log.Fatalf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
 		return
 	}
 }
 
-// Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
-	// set up TLS
-	creds, err := LoadTLSCredentials()
-	if err != nil {
-		log.Fatalf("failed to create credentials: %v", err)
-	}
-
-	// set up connection
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", server_host, server_port), grpc.WithTransportCredentials(creds))
-	if err != nil {
-		panic(err)
-	}
-
-	// set up client
-	return pb.NewCacheServiceClient(conn)
-}
 
 // Utility function to set up mTLS config and credentials
 func LoadTLSCredentials() (credentials.TransportCredentials, error) {
@@ -184,4 +169,31 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 	}
 
 	return credentials.NewTLS(config), nil
+}
+
+// Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
+func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+	// set up TLS
+	creds, err := LoadTLSCredentials()
+	if err != nil {
+		log.Fatalf("failed to create credentials: %v", err)
+	}
+
+	var kacp = keepalive.ClientParameters{
+		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
+		Timeout:             time.Second,      // wait 1 second for ping back
+		PermitWithoutStream: true,             // send pings even without active streams
+	}
+
+	// set up connection
+	conn, err := grpc.Dial(
+		fmt.Sprintf("%s:%d", server_host, server_port), 
+		grpc.WithTransportCredentials(creds),
+		grpc.WithKeepaliveParams(kacp))
+	if err != nil {
+		panic(err)
+	}	
+
+	// set up client
+	return pb.NewCacheServiceClient(conn)
 }
