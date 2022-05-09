@@ -38,7 +38,7 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 	for _, node := range nodes_config.Nodes {
 		c := NewCacheClient(node.Host, int(node.GrpcPort))
 		node.SetGrpcClient(c)
-		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
+		ring.AddNode(node.Group, node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &ClientWrapper{Config: nodes_config, Ring: ring}
 }
@@ -106,9 +106,6 @@ func (c *ClientWrapper) GetGrpc(key string) {
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
 
-	// make new grpc client
-	// client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
-
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -126,9 +123,6 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 	// find node which contains the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
-
-	// make new grpc client
-	// client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
 
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -186,10 +180,12 @@ func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
 	}
 
 	// set up connection
+	addr := fmt.Sprintf("%s:%d", server_host, server_port)
 	conn, err := grpc.Dial(
-		fmt.Sprintf("%s:%d", server_host, server_port), 
+		addr,	
 		grpc.WithTransportCredentials(creds),
-		grpc.WithKeepaliveParams(kacp))
+		grpc.WithKeepaliveParams(kacp),
+	)
 	if err != nil {
 		panic(err)
 	}	

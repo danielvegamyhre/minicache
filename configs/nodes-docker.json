@@ -1,6 +1,7 @@
 {
     "nodes": {
         "node0": {
+            "group": "group0",
             "id": "node0",
             "host": "cacheserver0",
             "rest_port": 8080,
@@ -8,6 +9,7 @@
             "HashId": ""
         },
         "node1": {
+            "group": "group0",
             "id": "node1",
             "host": "cacheserver1",
             "rest_port": 8080,
@@ -15,8 +17,17 @@
             "HashId": ""
         },
         "node2": {
+            "group": "group1",
             "id": "node2",
             "host": "cacheserver2",
+            "rest_port": 8080,
+            "grpc_port": 5005,
+            "HashId": ""
+        },
+        "node3": {
+            "group": "group1",
+            "id": "node3",
+            "host": "cacheserver3",
             "rest_port": 8080,
             "grpc_port": 5005,
             "HashId": ""
