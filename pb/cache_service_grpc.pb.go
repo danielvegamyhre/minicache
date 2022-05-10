@@ -25,12 +25,13 @@ type CacheServiceClient interface {
 	// Elections
 	GetPid(ctx context.Context, in *PidRequest, opts ...grpc.CallOption) (*PidResponse, error)
 	GetLeader(ctx context.Context, in *LeaderRequest, opts ...grpc.CallOption) (*LeaderResponse, error)
-	GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
+	GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	UpdateLeader(ctx context.Context, in *NewLeaderAnnouncement, opts ...grpc.CallOption) (*GenericResponse, error)
 	RequestElection(ctx context.Context, in *ElectionRequest, opts ...grpc.CallOption) (*GenericResponse, error)
-	// Replication
-	GetVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error)
-	UpdateVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error)
+	// Cluster management
+	GetClusterConfig(ctx context.Context, in *ClusterConfigRequest, opts ...grpc.CallOption) (*ClusterConfig, error)
+	UpdateClusterConfig(ctx context.Context, in *ClusterConfig, opts ...grpc.CallOption) (*empty.Empty, error)
+	RegisterNodeWithCluster(ctx context.Context, in *Node, opts ...grpc.CallOption) (*GenericResponse, error)
 }
 
 type cacheServiceClient struct {
@@ -77,8 +78,8 @@ func (c *cacheServiceClient) GetLeader(ctx context.Context, in *LeaderRequest, o
 	return out, nil
 }
 
-func (c *cacheServiceClient) GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
-	out := new(HeartbeatResponse)
+func (c *cacheServiceClient) GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
 	err := c.cc.Invoke(ctx, "/pb.CacheService/GetHeartbeat", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -104,18 +105,27 @@ func (c *cacheServiceClient) RequestElection(ctx context.Context, in *ElectionRe
 	return out, nil
 }
 
-func (c *cacheServiceClient) GetVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error) {
-	out := new(VectorClockResponse)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/GetVectorClock", in, out, opts...)
+func (c *cacheServiceClient) GetClusterConfig(ctx context.Context, in *ClusterConfigRequest, opts ...grpc.CallOption) (*ClusterConfig, error) {
+	out := new(ClusterConfig)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetClusterConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *cacheServiceClient) UpdateVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error) {
-	out := new(VectorClockResponse)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/UpdateVectorClock", in, out, opts...)
+func (c *cacheServiceClient) UpdateClusterConfig(ctx context.Context, in *ClusterConfig, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/UpdateClusterConfig", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cacheServiceClient) RegisterNodeWithCluster(ctx context.Context, in *Node, opts ...grpc.CallOption) (*GenericResponse, error) {
+	out := new(GenericResponse)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/RegisterNodeWithCluster", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,12 +142,13 @@ type CacheServiceServer interface {
 	// Elections
 	GetPid(context.Context, *PidRequest) (*PidResponse, error)
 	GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error)
-	GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
+	GetHeartbeat(context.Context, *HeartbeatRequest) (*empty.Empty, error)
 	UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error)
 	RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error)
-	// Replication
-	GetVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error)
-	UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error)
+	// Cluster management
+	GetClusterConfig(context.Context, *ClusterConfigRequest) (*ClusterConfig, error)
+	UpdateClusterConfig(context.Context, *ClusterConfig) (*empty.Empty, error)
+	RegisterNodeWithCluster(context.Context, *Node) (*GenericResponse, error)
 	mustEmbedUnimplementedCacheServiceServer()
 }
 
@@ -157,7 +168,7 @@ func (UnimplementedCacheServiceServer) GetPid(context.Context, *PidRequest) (*Pi
 func (UnimplementedCacheServiceServer) GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeader not implemented")
 }
-func (UnimplementedCacheServiceServer) GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
+func (UnimplementedCacheServiceServer) GetHeartbeat(context.Context, *HeartbeatRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHeartbeat not implemented")
 }
 func (UnimplementedCacheServiceServer) UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error) {
@@ -166,11 +177,14 @@ func (UnimplementedCacheServiceServer) UpdateLeader(context.Context, *NewLeaderA
 func (UnimplementedCacheServiceServer) RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestElection not implemented")
 }
-func (UnimplementedCacheServiceServer) GetVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetVectorClock not implemented")
+func (UnimplementedCacheServiceServer) GetClusterConfig(context.Context, *ClusterConfigRequest) (*ClusterConfig, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClusterConfig not implemented")
 }
-func (UnimplementedCacheServiceServer) UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateVectorClock not implemented")
+func (UnimplementedCacheServiceServer) UpdateClusterConfig(context.Context, *ClusterConfig) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateClusterConfig not implemented")
+}
+func (UnimplementedCacheServiceServer) RegisterNodeWithCluster(context.Context, *Node) (*GenericResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterNodeWithCluster not implemented")
 }
 func (UnimplementedCacheServiceServer) mustEmbedUnimplementedCacheServiceServer() {}
 
@@ -311,38 +325,56 @@ func _CacheService_RequestElection_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CacheService_GetVectorClock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VectorClockRequest)
+func _CacheService_GetClusterConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClusterConfigRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CacheServiceServer).GetVectorClock(ctx, in)
+		return srv.(CacheServiceServer).GetClusterConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.CacheService/GetVectorClock",
+		FullMethod: "/pb.CacheService/GetClusterConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).GetVectorClock(ctx, req.(*VectorClockRequest))
+		return srv.(CacheServiceServer).GetClusterConfig(ctx, req.(*ClusterConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CacheService_UpdateVectorClock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VectorClockRequest)
+func _CacheService_UpdateClusterConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClusterConfig)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CacheServiceServer).UpdateVectorClock(ctx, in)
+		return srv.(CacheServiceServer).UpdateClusterConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.CacheService/UpdateVectorClock",
+		FullMethod: "/pb.CacheService/UpdateClusterConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).UpdateVectorClock(ctx, req.(*VectorClockRequest))
+		return srv.(CacheServiceServer).UpdateClusterConfig(ctx, req.(*ClusterConfig))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CacheService_RegisterNodeWithCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacheServiceServer).RegisterNodeWithCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.CacheService/RegisterNodeWithCluster",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacheServiceServer).RegisterNodeWithCluster(ctx, req.(*Node))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -383,12 +415,16 @@ var CacheService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CacheService_RequestElection_Handler,
 		},
 		{
-			MethodName: "GetVectorClock",
-			Handler:    _CacheService_GetVectorClock_Handler,
+			MethodName: "GetClusterConfig",
+			Handler:    _CacheService_GetClusterConfig_Handler,
 		},
 		{
-			MethodName: "UpdateVectorClock",
-			Handler:    _CacheService_UpdateVectorClock_Handler,
+			MethodName: "UpdateClusterConfig",
+			Handler:    _CacheService_UpdateClusterConfig_Handler,
+		},
+		{
+			MethodName: "RegisterNodeWithCluster",
+			Handler:    _CacheService_RegisterNodeWithCluster_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -18,11 +18,11 @@ func NewRing() *Ring {
 	return &Ring{Nodes: node.Nodes{}}
 }
 
-func (r *Ring) AddNode(group string, id string, host string, rest_port int32, grpc_port int32) {
+func (r *Ring) AddNode(id string, host string, rest_port int32, grpc_port int32) {
 	r.Lock()
 	defer r.Unlock()
 
-	node := node.NewNode(group, id, host, rest_port, grpc_port)
+	node := node.NewNode(id, host, rest_port, grpc_port)
 	r.Nodes = append(r.Nodes, node)
 
 	sort.Sort(r.Nodes)
@@ -32,14 +32,8 @@ func (r *Ring) RemoveNode(id string) error {
 	r.Lock()
 	defer r.Unlock()
 
-	// improve beyond simple linear scan
-	var i int
-	for i = 0; i < len(r.Nodes); i++ {
-		if r.Nodes[i].Id == id {
-			break
-		}
-	}
-	if i == len(r.Nodes) {
+	i := r.search(id)
+	if i >= r.Nodes.Len() || r.Nodes[i].Id != id {
 		return ErrNodeNotFound
 	}
 
@@ -57,10 +51,9 @@ func (r *Ring) Get(id string) string {
 	return r.Nodes[i].Id
 }
 
-// Binary search in sorted hash id space for nearest node group that should store data for this key.
-func (r *Ring) search(key string) int {
+func (r *Ring) search(id string) int {
 	searchfn := func(i int) bool {
-		return r.Nodes[i].HashId >= node.HashId(key)
+		return r.Nodes[i].HashId >= node.HashId(id)
 	}
 
 	return sort.Search(r.Nodes.Len(), searchfn)

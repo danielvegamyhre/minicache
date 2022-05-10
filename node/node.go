@@ -20,7 +20,6 @@ type NodesConfig struct {
 // Node struct contains all info we need about a server node, as well as 
 // a gRPC client to interact with it
 type Node struct {
-	Group				string 	`json:"group"`	
 	Id 					string  `json:"id"`
 	Host 				string 	`json:"host"`
 	RestPort 			int32 	`json:"rest_port"`
@@ -33,16 +32,13 @@ func (n *Node) SetGrpcClient(c pb.CacheServiceClient) {
 	n.GrpcClient = c
 }
 
-// Create a new node object. 
-// Hash by group id so each group of replicas serve the same partition of the consistent hashing ring.
-func NewNode(group string, id string, host string, rest_port int32, grpc_port int32) *Node {
+func NewNode(id string, host string, rest_port int32, grpc_port int32) *Node {
 	return &Node{
-		Group:			group,
 		Id:    		 	id,
 		Host:			host,
 		RestPort: 		rest_port,
 		GrpcPort: 		grpc_port,	
-		HashId: 		HashId(group), 
+		HashId: 		HashId(id),
 	}
 }
 
@@ -68,7 +64,7 @@ func LoadNodesConfig(config_file string) NodesConfig {
 		log.Printf("couldn't find config file or it was empty: %s", config_file)
 		log.Println("using default node localhost")
 		nodes_config = NodesConfig{Nodes: make(map[string]*Node)}
-		default_node := NewNode("group0", "node0", "localhost", 8080, 5005)
+		default_node := NewNode("node0", "localhost", 8080, 5005)
 		nodes_config.Nodes[default_node.Id] = default_node
 	} else {
 		for _, nodeInfo := range nodes_config.Nodes {
