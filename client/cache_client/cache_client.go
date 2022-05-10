@@ -31,7 +31,7 @@ type ClientWrapper struct {
 	Ring		*ring.Ring
 }
 
-// Checks cluster config every second and updates ring with any changes. Runs in infinite loop.
+// Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
 func (c *ClientWrapper) StartClusterConfigWatcher() {
 	go func(){
 		for {
@@ -99,13 +99,15 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 
 			// add new nodes to ring
 			for _, nodecfg := range res.Nodes {
-				log.Printf("Adding node %s to ring", nodecfg.Id)
-				c.Config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-				c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+				if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
+					log.Printf("Adding node %s to ring", nodecfg.Id)
+					c.Config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+					c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+				}
 			}
 
-			// sleep for a second then check again
-			time.Sleep(time.Second)
+			// sleep for 5 seconds then check again
+			time.Sleep(5 * time.Second)
 		}
 	}()
 }
