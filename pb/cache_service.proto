@@ -46,8 +46,7 @@ message LeaderRequest {
 }
 
 message LeaderResponse {
-  string host = 1;
-  int32 port = 2;
+  string id = 1;
 }
 
 message NewLeaderAnnouncement {
@@ -90,4 +89,4 @@ service CacheService {
   rpc GetClusterConfig(ClusterConfigRequest) returns (ClusterConfig);
   rpc UpdateClusterConfig(ClusterConfig) returns (google.protobuf.Empty);
   rpc RegisterNodeWithCluster(Node) returns (GenericResponse);
-} 
+}

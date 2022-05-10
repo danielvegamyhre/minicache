@@ -37,12 +37,11 @@ func (s *CacheServer) RunElection() {
 		}
 
 		// new identity service client
-		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
 		// make status request rpc
-		res, err := client.GetPid(ctx, &pb.PidRequest{CallerPid: local_pid})
+		res, err := node.GrpcClient.GetPid(ctx, &pb.PidRequest{CallerPid: local_pid})
 		if err != nil {
 			s.logger.Infof("PID request to node %s failed", node.Id)
 			continue
@@ -55,7 +54,7 @@ func (s *CacheServer) RunElection() {
 			defer cancel()
 			
 			s.logger.Infof("Sending election request to node %s", node.Id)
-			_, err = client.RequestElection(ctx, &pb.ElectionRequest{CallerPid: local_pid, CallerNodeId: s.node_id})
+			_, err = node.GrpcClient.RequestElection(ctx, &pb.ElectionRequest{CallerPid: local_pid, CallerNodeId: s.node_id})
 			if err != nil {
 				s.logger.Infof("Error requesting node %s run an election: %v", node.Id, err)
 			}
@@ -96,18 +95,34 @@ func (s *CacheServer) AnnounceNewLeader(winner string) {
 			continue
 		}
 
-		// new identity service client
-		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
 		// make status request rpc
-		_, err := client.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: winner})
+		_, err := node.GrpcClient.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: winner})
 		if err != nil {
 			s.logger.Infof("Election winner announcement to node %s error: %v", node.Id, err)
 			continue
 		}
 	}
+}
+
+// Returns current leader
+func (s *CacheServer) GetLeader(ctx context.Context, request *pb.LeaderRequest) (*pb.LeaderResponse, error) {
+	// while there is no leader, run election 
+	for {
+		if s.leader_id != NO_LEADER {
+			break
+		}
+		s.RunElection()
+		
+		// if no leader was elected, wait 3 seconds then run another election
+		if s.leader_id == NO_LEADER {
+			s.logger.Info("No leader elected, waiting 3 seconds before trying again...")
+			time.Sleep(3*time.Second)
+		}
+	}
+	return &pb.LeaderResponse{Id: s.leader_id}, nil
 }
 
 // Checks if leader is alive every 1 second. If no response for 3 seconds, new election is held.
@@ -117,10 +132,11 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 
     ticker := time.NewTicker(time.Second)
     for {
-			// run heartbeat check every 1 second
-            <-ticker.C
+		// run heartbeat check every 1 second
+        <-ticker.C
 
-			// if leader isn't alive, run new election
+		// case 1: we are a follower
+		if s.leader_id != s.node_id {
 			if !s.IsLeaderAlive() {
 				s.logger.Info("Leader heartbeat failed, running new election")
 				s.RunElection()
@@ -134,7 +150,30 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 			case <-time.After(time.Second):
 				continue
 			}
-        }
+
+		// case 2: we are the leader, so check for any dead nodes and remove them from cluster
+		} else {
+			modified := false
+			for _, node := range s.Ring.Nodes {
+				// new identity service client
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+
+				_, err := node.GrpcClient.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
+				if err != nil {
+					s.logger.Infof("Node %s healthcheck returned error, removing from cluster", node.Id, err)
+					delete(s.nodes_config.Nodes, node.Id)
+					s.Ring.RemoveNode(node.Id)
+					modified = true
+				}
+			}
+
+			// if cluster was modified, send out updated cluster config to other nodes
+			if modified {
+				s.updateClusterConfigInternal()
+			}
+		}
+    }
 }
 
 // Check if leader node is alive (3 second timeout)
@@ -151,12 +190,11 @@ func (s *CacheServer) IsLeaderAlive() bool {
 	leader := s.nodes_config.Nodes[s.leader_id]
 
 	// new identity service client
-	client := NewGrpcClientForNode(leader)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// make status request rpc
-	_, err := client.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
+	_, err := leader.GrpcClient.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
 	if err != nil {
 		s.logger.Infof("Leader healthcheck returned error: %v", err)
 		return false
