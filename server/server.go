@@ -275,8 +275,8 @@ func (s *CacheServer) RegisterNodeInternal() {
 		break
 	}
 
-	leader := s.nodes_config.Nodes[s.leader_id]
-	local_node := s.nodes_config.Nodes[s.node_id]
+	leader, _ := s.nodes_config.Nodes[s.leader_id]
+	local_node, _ := s.nodes_config.Nodes[s.node_id]
 	req := pb.Node{
 		Id: local_node.Id, 
 		Host: local_node.Host, 
@@ -287,8 +287,8 @@ func (s *CacheServer) RegisterNodeInternal() {
 	defer cancel()
 
 	if leader.GrpcClient == nil {
-		c := s.NewCacheClient(node.Host, int(node.GrpcPort))
-		node.SetGrpcClient(c)
+		c := s.NewCacheClient(leader.Host, int(leader.GrpcPort))
+		leader.SetGrpcClient(c)
 	}
 
 	_, err := leader.GrpcClient.RegisterNodeWithCluster(ctx, &req)

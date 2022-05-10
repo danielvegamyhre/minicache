@@ -130,7 +130,7 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 	// wait for decision to get leader
 	s.logger.Info("Leader heartbeat monitor starting...")
 
-    ticker := time.NewTicker(time.Second)
+    ticker := time.NewTicker(5*time.Second)
     for {
 		// run heartbeat check every 1 second
         <-ticker.C
