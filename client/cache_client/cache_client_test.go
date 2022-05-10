@@ -25,6 +25,7 @@ func Test10kConcurrentRestApiPutsDocker(t *testing.T) {
 
 func Test10kConcurrentGrpcPutsDocker(t *testing.T) {
 	c := NewClientWrapper("../../configs/nodes-docker.json")
+	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)

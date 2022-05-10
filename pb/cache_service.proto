@@ -4,6 +4,7 @@ option go_package = "./";
 import "google/protobuf/empty.proto";
 package pb;
 
+// get/put messages
 message GetRequest {
   string key = 1;
 }
@@ -17,8 +18,18 @@ message PutRequest {
   string value = 2;
 }
 
-message GenericResponse {
-  string data = 1;
+// election messages
+message ElectionRequest {
+  int32 caller_pid = 1;
+  string caller_node_id = 2;
+}
+
+message PidRequest {
+  int32 caller_pid = 1;
+}
+
+message PidResponse {
+  int32 pid = 1;
 }
 
 message HeartbeatRequest {
@@ -35,33 +46,31 @@ message LeaderRequest {
 }
 
 message LeaderResponse {
-  string host = 1;
-  int32 port = 2;
+  string id = 1;
 }
 
 message NewLeaderAnnouncement {
   string leader_id = 1;
 }
 
-message VectorClockRequest {
-  repeated int32 vector = 1;
+// cluster config messages
+message Node {
+  string id = 1;
+  string host = 2;
+  int32 rest_port = 3;
+  int32 grpc_port = 4;
 }
 
-message VectorClockResponse {
-  repeated int32 vector = 1;
+message ClusterConfigRequest {
+  string caller_node_id = 1;
 }
 
-message PidRequest {
-  int32 caller_pid = 1;
+message ClusterConfig {
+  repeated Node nodes = 1;
 }
 
-message PidResponse {
-  int32 pid = 1;
-}
-
-message ElectionRequest {
-  int32 caller_pid = 1;
-  string caller_node_id = 2;
+message GenericResponse {
+  string data = 1;
 }
 
 service CacheService {
@@ -72,11 +81,12 @@ service CacheService {
   // Elections
   rpc GetPid(PidRequest) returns (PidResponse);
   rpc GetLeader(LeaderRequest) returns (LeaderResponse);
-  rpc GetHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc GetHeartbeat(HeartbeatRequest) returns (google.protobuf.Empty);
   rpc UpdateLeader(NewLeaderAnnouncement) returns (GenericResponse);
   rpc RequestElection(ElectionRequest) returns (GenericResponse);
 
-  // Replication
-  rpc GetVectorClock(VectorClockRequest) returns (VectorClockResponse);
-  rpc UpdateVectorClock(VectorClockRequest) returns (VectorClockResponse);
-} 
+  // Cluster management
+  rpc GetClusterConfig(ClusterConfigRequest) returns (ClusterConfig);
+  rpc UpdateClusterConfig(ClusterConfig) returns (google.protobuf.Empty);
+  rpc RegisterNodeWithCluster(Node) returns (GenericResponse);
+}
