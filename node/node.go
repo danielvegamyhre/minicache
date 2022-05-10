@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"os"
 	"log"
+	"math/rand"
 	"hash/crc32"
+	"time"
 	"github.com/malwaredllc/minicache/pb"
 )
 
@@ -44,6 +46,7 @@ func NewNode(id string, host string, rest_port int32, grpc_port int32) *Node {
 
 type Nodes []*Node
 
+// implementing methods required for sorting
 func (n Nodes) Len() int           { return len(n) }
 func (n Nodes) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n Nodes) Less(i, j int) bool { return n[i].HashId < n[j].HashId }
@@ -82,6 +85,24 @@ func GetCurrentNodeId(config NodesConfig) string {
 			return node.Id
 		}
 	}
-	// if host not found, default to node 0
-	return "node0"
+	// if host not found, generate random node id
+	return randSeq(5)
+}
+
+// Get random node from a given list of nodes
+func GetRandomNode(nodes []*Node) *Node {
+	rand.Seed(time.Now().UnixNano())
+	randomIndex := rand.Intn(len(nodes))
+	return nodes[randomIndex]
+}
+
+
+func randSeq(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	letters := []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    b := make([]rune, n)
+    for i := range b {
+        b[i] = letters[rand.Intn(len(letters))]
+    }
+    return string(b)
 }

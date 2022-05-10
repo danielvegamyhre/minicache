@@ -14,10 +14,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/keepalive"	
 	empty "github.com/golang/protobuf/ptypes/empty"
 
 	"go.uber.org/zap"
@@ -25,6 +28,7 @@ import (
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/lru_cache"
 	"github.com/malwaredllc/minicache/ring"
+
 	"sync"
 
     "github.com/gin-gonic/gin"
@@ -68,6 +72,12 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 
 	// determine which node id we are and which group we are in
 	node_id := node.GetCurrentNodeId(nodes_config)
+
+	// if this is not one of the initial nodes in the config file, add it dynamically
+	if _, ok := nodes_config.Nodes[node_id]; !ok {
+		host, _ := os.Hostname()
+		nodes_config.Nodes[node_id] = node.NewNode(node_id, host, 8080, 5005)
+	}
 
 	// set up gin router
 	router := gin.New()
@@ -222,3 +232,79 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 	// new identity service client
 	return pb.NewCacheServiceClient(conn)	
 }
+
+// Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
+func (s *CacheServer) NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+	// set up TLS
+	creds, err := LoadTLSCredentials()
+	if err != nil {
+		s.logger.Fatalf("failed to create credentials: %v", err)
+	}
+
+	var kacp = keepalive.ClientParameters{
+		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
+		Timeout:             time.Second,      // wait 1 second for ping back
+		PermitWithoutStream: true,             // send pings even without active streams
+	}
+
+	// set up connection
+	addr := fmt.Sprintf("%s:%d", server_host, server_port)
+	conn, err := grpc.Dial(
+		addr,	
+		grpc.WithTransportCredentials(creds),
+		grpc.WithKeepaliveParams(kacp),
+		grpc.WithTimeout(time.Duration(time.Second)),
+	)
+	if err != nil {
+		panic(err)
+	}	
+
+	// set up client
+	return pb.NewCacheServiceClient(conn)
+}
+
+// Register node with the cluster. This is a function to be called internally by server code (as 
+// opposed to the gRPC handler to register node, which is what receives the RPC sent by this function).
+func (s *CacheServer) RegisterNodeInternal() {
+	// wait for leader to be elected if not done
+	for {
+		if s.leader_id == NO_LEADER {
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+
+	leader := s.nodes_config.Nodes[s.leader_id]
+	local_node := s.nodes_config.Nodes[s.node_id]
+	req := pb.Node{
+		Id: local_node.Id, 
+		Host: local_node.Host, 
+		RestPort: local_node.RestPort, 
+		GrpcPort: local_node.GrpcPort,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if leader.GrpcClient == nil {
+		c := s.NewCacheClient(node.Host, int(node.GrpcPort))
+		node.SetGrpcClient(c)
+	}
+
+	_, err := leader.GrpcClient.RegisterNodeWithCluster(ctx, &req)
+	if err != nil {
+		s.logger.Infof("error registering node %s with cluster: %v", s.node_id, err)
+		return
+	}
+	s.logger.Infof("registered node %s with cluster", s.node_id)
+}
+
+// Set up a gRPC client for each node in cluster
+func (s *CacheServer) CreateAllGrpcClients() {
+	for _, node := range s.nodes_config.Nodes {
+		c := s.NewCacheClient(node.Host, int(node.GrpcPort))
+		node.SetGrpcClient(c)
+		s.logger.Infof("Created gRPC client to %s", node.Id)
+	}
+}
+    
