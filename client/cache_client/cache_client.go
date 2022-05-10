@@ -38,7 +38,7 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 	for _, node := range nodes_config.Nodes {
 		c := NewCacheClient(node.Host, int(node.GrpcPort))
 		node.SetGrpcClient(c)
-		ring.AddNode(node.Group, node.Id, node.Host, node.RestPort, node.GrpcPort)
+		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &ClientWrapper{Config: nodes_config, Ring: ring}
 }
@@ -72,7 +72,6 @@ func (c *ClientWrapper) Put(key string, value string) string {
 	// find node to put the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
-
 
 	// encode json payload
 	payload := Payload{Key: key, Value: value}

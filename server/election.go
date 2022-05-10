@@ -6,6 +6,13 @@ import (
 	"os"
 	"time"
 	"github.com/malwaredllc/minicache/pb"
+	empty "github.com/golang/protobuf/ptypes/empty"
+)
+
+const (
+	ELECTION_RUNNING = true
+	NO_ELECTION_RUNNING= false
+	NO_LEADER = "NO LEADER"
 )
 
 // Run an election using the Bully Algorithm (https://en.wikipedia.org/wiki/Bully_algorithm)
@@ -165,15 +172,9 @@ func (s *CacheServer) UpdateLeader(ctx context.Context, request *pb.NewLeaderAnn
 }
 
 // Return current status of this node (leader/follower)
-func (s *CacheServer) GetHeartbeat(ctx context.Context, request *pb.HeartbeatRequest) (*pb.HeartbeatResponse, error) {
-	var status string 
-	if s.node_id == s.leader_id {
-		status = LEADER
-	} else {
-		status = FOLLOWER
-	}
-	s.logger.Infof("Node %s returning status %s to node %s", s.node_id, status, request.CallerNodeId)
-	return &pb.HeartbeatResponse{Status: status, NodeId: s.node_id}, nil
+func (s *CacheServer) GetHeartbeat(ctx context.Context, request *pb.HeartbeatRequest) (*empty.Empty, error) {
+	s.logger.Infof("Node %s returning heartbeat to node %s", s.node_id, request.CallerNodeId)
+	return &empty.Empty{}, nil
 }
 
 // gRPC handler that receives a request with the caller's PID and returns its own PID. 
