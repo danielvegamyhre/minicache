@@ -9,6 +9,8 @@ import (
 // 10 goroutines make 1k requests each
 func main() {
 	c := cache_client.NewClientWrapper("../configs/nodes-docker.json")
+	c.StartClusterConfigWatcher()
+
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)

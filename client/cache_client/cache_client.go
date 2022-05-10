@@ -19,20 +19,102 @@ import (
 	"google.golang.org/grpc/keepalive"	
 )
 
+type Payload struct {
+	Key 	string		`json:"key"`
+	Value	string		`json:"value"`
+}
+
+
 // Client wrapper for interacting with Identity Server
 type ClientWrapper struct {
 	Config 		node.NodesConfig
 	Ring		*ring.Ring
 }
 
-type Payload struct {
-	Key 	string		`json:"key"`
-	Value	string		`json:"value"`
+// Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
+func (c *ClientWrapper) StartClusterConfigWatcher() {
+	go func(){
+		for {
+			// ask random nodes who the leader until we get a response. 
+			// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
+			var leader *node.Node
+			attempted := make(map[string]bool)
+			for {
+				randnode := node.GetRandomNode(c.Ring.Nodes)
+
+				// skip attempted nodes
+				if _, ok := attempted[randnode.Id]; ok {
+					log.Printf("Skipping visited node %s...", randnode.Id)
+					continue
+				}
+
+				// mark visited and request leader
+				log.Printf("Attempting to get leader from node %s", randnode.Id)
+				attempted[randnode.Id] = true
+
+				if randnode.GrpcClient == nil {
+					randnode.SetGrpcClient(NewCacheClient(randnode.Host, int(randnode.GrpcPort)))
+				}
+
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				res, err := randnode.GrpcClient.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
+				if err != nil {
+					continue
+				}
+
+				log.Printf("Found leader: %s", res.Id)
+				leader = c.Config.Nodes[res.Id]
+				break
+			}
+
+
+			// get cluster config from current leader
+			req := pb.ClusterConfigRequest{CallerNodeId: "client"}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			res, err := leader.GrpcClient.GetClusterConfig(ctx, &req)
+			if err != nil {
+				log.Printf("error getting cluster config from node %s: %v", leader.Id, err)
+				continue
+			}
+
+			// create hashmap of online node IDs to find missing node in constant time
+			cluster_nodes := make(map[string]bool)
+			for _, nodecfg := range res.Nodes {
+				cluster_nodes[nodecfg.Id] = true
+			}
+
+			log.Printf("cluster config: %v - %v", res.Nodes)
+
+			// remove missing nodes from ring
+			for _, node := range c.Config.Nodes {
+				if _, ok := cluster_nodes[node.Id]; !ok {
+					log.Printf("Removing node %s from ring", node.Id)
+					delete(c.Config.Nodes, node.Id)
+					c.Ring.RemoveNode(node.Id)
+				}
+			}
+
+			// add new nodes to ring
+			for _, nodecfg := range res.Nodes {
+				if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
+					log.Printf("Adding node %s to ring", nodecfg.Id)
+					c.Config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+					c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+				}
+			}
+
+			// sleep for 5 seconds then check again
+			time.Sleep(5 * time.Second)
+		}
+	}()
 }
 
 // Create new Client struct instance and sets up node ring with consistent hashing
 func NewClientWrapper(config_file string) *ClientWrapper {
-	// get nodes config
+	// get initial nodes from config file and add them to the ring
 	nodes_config := node.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
 	for _, node := range nodes_config.Nodes {
@@ -41,6 +123,36 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &ClientWrapper{Config: nodes_config, Ring: ring}
+}
+
+// Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
+func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+	// set up TLS
+	creds, err := LoadTLSCredentials()
+	if err != nil {
+		log.Fatalf("failed to create credentials: %v", err)
+	}
+
+	var kacp = keepalive.ClientParameters{
+		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
+		Timeout:             time.Second,      // wait 1 second for ping back
+		PermitWithoutStream: true,             // send pings even without active streams
+	}
+
+	// set up connection
+	addr := fmt.Sprintf("%s:%d", server_host, server_port)
+	conn, err := grpc.Dial(
+		addr,	
+		grpc.WithTransportCredentials(creds),
+		grpc.WithKeepaliveParams(kacp),
+		grpc.WithTimeout(time.Duration(time.Second)),
+	)
+	if err != nil {
+		panic(err)
+	}	
+
+	// set up client
+	return pb.NewCacheServiceClient(conn)
 }
 
 // Get item from cache. Hash the key to find which node has the value stored.
@@ -72,7 +184,6 @@ func (c *ClientWrapper) Put(key string, value string) string {
 	// find node to put the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
-
 
 	// encode json payload
 	payload := Payload{Key: key, Value: value}
@@ -106,8 +217,11 @@ func (c *ClientWrapper) GetGrpc(key string) {
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
 
-	// make new grpc client
-	// client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+	// make new client if necessary
+	if nodeInfo.GrpcClient == nil {
+		c := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		nodeInfo.SetGrpcClient(c)
+	}
 
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -127,8 +241,11 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
 
-	// make new grpc client
-	// client := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+	// make new client if necessary
+	if nodeInfo.GrpcClient == nil {
+		c := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		nodeInfo.SetGrpcClient(c)
+	}
 
 	// create context
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -141,7 +258,6 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 		return
 	}
 }
-
 
 // Utility function to set up mTLS config and credentials
 func LoadTLSCredentials() (credentials.TransportCredentials, error) {
@@ -171,29 +287,3 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(config), nil
 }
 
-// Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
-	// set up TLS
-	creds, err := LoadTLSCredentials()
-	if err != nil {
-		log.Fatalf("failed to create credentials: %v", err)
-	}
-
-	var kacp = keepalive.ClientParameters{
-		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
-		Timeout:             time.Second,      // wait 1 second for ping back
-		PermitWithoutStream: true,             // send pings even without active streams
-	}
-
-	// set up connection
-	conn, err := grpc.Dial(
-		fmt.Sprintf("%s:%d", server_host, server_port), 
-		grpc.WithTransportCredentials(creds),
-		grpc.WithKeepaliveParams(kacp))
-	if err != nil {
-		panic(err)
-	}	
-
-	// set up client
-	return pb.NewCacheServiceClient(conn)
-}
