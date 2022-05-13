@@ -40,7 +40,6 @@ const (
 )
 
 type CacheServer struct {
-	//Ring				ring.Ring
 	router				*gin.Engine
 	cache				*lru_cache.LruCache
 	logger 				*zap.SugaredLogger 
