@@ -86,7 +86,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				cluster_nodes[nodecfg.Id] = true
 			}
 
-			log.Printf("cluster config: %v - %v", res.Nodes)
+			log.Printf("cluster config: %v", res.Nodes)
 
 			// remove missing nodes from ring
 			for _, node := range c.Config.Nodes {

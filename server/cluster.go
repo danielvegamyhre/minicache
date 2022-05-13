@@ -1,10 +1,13 @@
 package server
 
 import (
+	"fmt"
 	"context"
 	"github.com/malwaredllc/minicache/pb"
 	"github.com/malwaredllc/minicache/node"
 	empty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/codes"
 	"time"
 )
 
@@ -18,25 +21,42 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 	}
 
 	// add node to ring
-	s.Ring.AddNode(nodeInfo.Id, nodeInfo.Host, nodeInfo.RestPort, nodeInfo.GrpcPort)
-	s.logger.Infof("Added node %s to ring", nodeInfo.Id)
+	// s.Ring.AddNode(nodeInfo.Id, nodeInfo.Host, nodeInfo.RestPort, nodeInfo.GrpcPort)
+	// s.logger.Infof("Added node %s to ring", nodeInfo.Id)
 
 	// add node to hashmap config for easy lookup
 	s.nodes_config.Nodes[nodeInfo.Id] = node.NewNode(nodeInfo.Id, nodeInfo.Host, nodeInfo.RestPort, nodeInfo.GrpcPort)
 
+	// setup grpc client for new node
+	c, err := s.NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+	if err != nil {
+		s.logger.Errorf("unable to connect to node %s", nodeInfo.Id)
+		return nil, status.Errorf(
+            codes.InvalidArgument,
+            fmt.Sprintf("Unable to connect to node being registered: %s", nodeInfo.Id),
+        )
+	}
+	s.nodes_config.Nodes[nodeInfo.Id].SetGrpcClient(c)
+	s.logger.Infof("Added gprc client %v to node %s", c, nodeInfo.Id)
+
 	// send update to other nodes in cluster
 	var nodes []*pb.Node
-	for _, ringnode := range s.Ring.Nodes {
-		nodes = append(nodes, &pb.Node{Id: ringnode.Id, Host: ringnode.Host, RestPort: ringnode.RestPort, GrpcPort: ringnode.GrpcPort})
+	for _, node := range s.nodes_config.Nodes {
+		nodes = append(nodes, &pb.Node{Id: node.Id, Host: node.Host, RestPort: node.RestPort, GrpcPort: node.GrpcPort})
 	}
-	for _, ringnode := range s.Ring.Nodes {
+	for _, node := range s.nodes_config.Nodes {
+		// skip self
+		if node.Id == s.node_id {
+			continue
+		}
+		s.logger.Infof("Sending updated cluster config to node %s with grpc client %v", node.Id, node.GrpcClient)
 		// create context
 		req_ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		cfg := pb.ClusterConfig{Nodes: nodes}
 
-		ringnode.GrpcClient.UpdateClusterConfig(req_ctx, &cfg)
+		node.GrpcClient.UpdateClusterConfig(req_ctx, &cfg)
 	}
 	return &pb.GenericResponse{Data: SUCCESS}, nil
 }
@@ -44,8 +64,8 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 // gRPC handler for getting cluster config
 func (s *CacheServer) GetClusterConfig(ctx context.Context, req *pb.ClusterConfigRequest) (*pb.ClusterConfig, error) {
 	var nodes []*pb.Node
-	for _, ringnode := range s.nodes_config.Nodes {
-		nodes = append(nodes, &pb.Node{Id: ringnode.Id, Host: ringnode.Host, RestPort: ringnode.RestPort, GrpcPort: ringnode.GrpcPort})
+	for _, node := range s.nodes_config.Nodes {
+		nodes = append(nodes, &pb.Node{Id: node.Id, Host: node.Host, RestPort: node.RestPort, GrpcPort: node.GrpcPort})
 	}
 	s.logger.Infof("Returning cluster config to node %s: %v", req.CallerNodeId, nodes)
 	return &pb.ClusterConfig{Nodes: nodes}, nil
@@ -57,9 +77,22 @@ func (s *CacheServer) UpdateClusterConfig(ctx context.Context, req *pb.ClusterCo
 	// for each node in incoming config, if it isn't in our current config, add it
 	for _, nodecfg := range req.Nodes {
 		if _, ok := s.nodes_config.Nodes[nodecfg.Id]; !ok {
-			s.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-			s.nodes_config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-			s.logger.Infof("Added new node %s to ring", nodecfg.Id)
+			// add new node to ring
+			// s.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+			newNode := node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+			// s.logger.Infof("Added new node %s to ring", nodecfg.Id)
+
+			// set up grpc client to new node
+			c, err := s.NewCacheClient(nodecfg.Host, int(nodecfg.GrpcPort))
+			if err != nil {
+				s.logger.Errorf("unable to connect to node %s", nodecfg.Id)
+				continue
+			}
+			newNode.SetGrpcClient(c)
+			s.logger.Infof("added grpc client %v to node %s", c, nodecfg.Id)
+
+			// add new node to config
+			s.nodes_config.Nodes[nodecfg.Id] = newNode
 		}
 	}
 	return &empty.Empty{}, nil
@@ -71,16 +104,20 @@ func (s *CacheServer) updateClusterConfigInternal() {
 
 	// send update to other nodes in cluster
 	var nodes []*pb.Node
-	for _, ringnode := range s.Ring.Nodes {
-		nodes = append(nodes, &pb.Node{Id: ringnode.Id, Host: ringnode.Host, RestPort: ringnode.RestPort, GrpcPort: ringnode.GrpcPort})
+	for _, node := range s.nodes_config.Nodes {
+		nodes = append(nodes, &pb.Node{Id: node.Id, Host: node.Host, RestPort: node.RestPort, GrpcPort: node.GrpcPort})
 	}
-	for _, ringnode := range s.Ring.Nodes {
+	for _, node := range s.nodes_config.Nodes {
+		// skip self
+		if node.Id == s.node_id {
+			continue
+		}
 		// create context
 		req_ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		cfg := pb.ClusterConfig{Nodes: nodes}
 
-		ringnode.GrpcClient.UpdateClusterConfig(req_ctx, &cfg)
+		node.GrpcClient.UpdateClusterConfig(req_ctx, &cfg)
 	}
 }
