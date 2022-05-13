@@ -18,7 +18,7 @@ func main() {
 			defer wg.Done()
 			for i := 1; i <= 1000; i++ {
 				v := strconv.Itoa(i)
-				_ = c.Put(v, v)
+				c.Put(v, v)
 			}
 		}()
 	}	

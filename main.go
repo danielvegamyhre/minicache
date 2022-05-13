@@ -32,7 +32,7 @@ func main() {
 	go grpc_server.Serve(listener)
 
 	// set up grpc clients with each node in cluster
-	cache_server.CreateAllGrpcClients()
+	//cache_server.CreateAllGrpcClients()
 
 	// register node with cluster
 	cache_server.RegisterNodeInternal()

@@ -146,7 +146,7 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 	// wait for decision to get leader
 	s.logger.Info("Leader heartbeat monitor starting...")
 
-    ticker := time.NewTicker(5*time.Second)
+    ticker := time.NewTicker(time.Second)
     for {
 		// run heartbeat check every 1 second
         <-ticker.C
@@ -187,7 +187,7 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 				defer cancel()
 
-				s.logger.Infof("Checking health of node %s grpc client %v", node.Id, node.GrpcClient)
+				s.logger.Infof("Checking health of node %s", node.Id)
 				_, err = c.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
 				if err != nil {
 					s.logger.Infof("Node %s healthcheck returned error, removing from cluster", node.Id)
