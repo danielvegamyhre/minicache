@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"bytes"
 	"log"
+	"errors"
 	"net/http"
 	"encoding/json"
 	"io/ioutil"
@@ -11,7 +12,7 @@ import (
 	"crypto/x509"
 	"context"
 	"time"
-	"github.com/malwaredllc/minicache/node"
+	nodelib "github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/ring"
 	"github.com/malwaredllc/minicache/pb"
 	"google.golang.org/grpc"
@@ -27,7 +28,7 @@ type Payload struct {
 
 // Client wrapper for interacting with Identity Server
 type ClientWrapper struct {
-	Config 		node.NodesConfig
+	Config 		nodelib.NodesConfig
 	Ring		*ring.Ring
 }
 
@@ -37,10 +38,10 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 		for {
 			// ask random nodes who the leader until we get a response. 
 			// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
-			var leader *node.Node
+			var leader *nodelib.Node
 			attempted := make(map[string]bool)
 			for {
-				randnode := node.GetRandomNode(c.Ring.Nodes)
+				randnode := nodelib.GetRandomNode(c.Ring.Nodes)
 
 				// skip attempted nodes
 				if _, ok := attempted[randnode.Id]; ok {
@@ -53,7 +54,12 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				attempted[randnode.Id] = true
 
 				if randnode.GrpcClient == nil {
-					randnode.SetGrpcClient(NewCacheClient(randnode.Host, int(randnode.GrpcPort)))
+					c, err := NewCacheClient(randnode.Host, int(randnode.GrpcPort))
+					if err != nil {
+						log.Printf("error: %v", err)
+						return
+					}
+					randnode.SetGrpcClient(c)
 				}
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -101,7 +107,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 			for _, nodecfg := range res.Nodes {
 				if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
 					log.Printf("Adding node %s to ring", nodecfg.Id)
-					c.Config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+					c.Config.Nodes[nodecfg.Id] = nodelib.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
 					c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
 				}
 			}
@@ -115,18 +121,56 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 // Create new Client struct instance and sets up node ring with consistent hashing
 func NewClientWrapper(config_file string) *ClientWrapper {
 	// get initial nodes from config file and add them to the ring
-	nodes_config := node.LoadNodesConfig(config_file)
+	init_nodes_config := nodelib.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
-	for _, node := range nodes_config.Nodes {
-		c := NewCacheClient(node.Host, int(node.GrpcPort))
+	var cluster_config []*pb.Node
+
+	for _, node := range init_nodes_config.Nodes {
+		c, err := NewCacheClient(node.Host, int(node.GrpcPort))
+		if err != nil {
+			log.Printf("error: %v", err)
+			continue
+		}
 		node.SetGrpcClient(c)
-		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
+		
+		// try getting config from node
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		res, err := c.GetClusterConfig(ctx, &pb.ClusterConfigRequest{CallerNodeId: "client"})
+		if err != nil {
+			log.Printf("error getting cluster config form node %s: %v", node.Id, err)
+			continue
+		}
+		cluster_config = res.Nodes
+		break
 	}
-	return &ClientWrapper{Config: nodes_config, Ring: ring}
+
+	log.Printf("initial cluster config: %v", cluster_config)
+
+	// create config map from ring
+	config_map := make(map[string]*nodelib.Node)
+	for _, node := range cluster_config {
+		// add to config map
+		config_map[node.Id] = nodelib.NewNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
+		
+		// add to ring
+		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
+
+		// attempt to create client
+		c, err := NewCacheClient(node.Host, int(node.GrpcPort))
+		if err != nil {
+			log.Printf("error: %v", err)
+			continue
+		}
+		config_map[node.Id].SetGrpcClient(c)
+	}
+	config := nodelib.NodesConfig{Nodes: config_map}
+	return &ClientWrapper{Config: config, Ring: ring}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+func NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
 	// set up TLS
 	creds, err := LoadTLSCredentials()
 	if err != nil {
@@ -148,11 +192,11 @@ func NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
 		grpc.WithTimeout(time.Duration(time.Second)),
 	)
 	if err != nil {
-		panic(err)
+		return nil, errors.New("unable to connect to node")
 	}	
 
 	// set up client
-	return pb.NewCacheServiceClient(conn)
+	return pb.NewCacheServiceClient(conn), nil
 }
 
 // Get item from cache. Hash the key to find which node has the value stored.
@@ -219,7 +263,11 @@ func (c *ClientWrapper) GetGrpc(key string) {
 
 	// make new client if necessary
 	if nodeInfo.GrpcClient == nil {
-		c := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		c, err := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		if err != nil {
+			log.Printf("error: %v", err)
+			return
+		}
 		nodeInfo.SetGrpcClient(c)
 	}
 
@@ -230,7 +278,7 @@ func (c *ClientWrapper) GetGrpc(key string) {
 	// make request
 	res, err := nodeInfo.GrpcClient.Get(ctx, &pb.GetRequest{Key: key})
 	if err != nil {
-		log.Fatalf("Error getting key '%s' from cache: %v", key, err)
+		log.Printf("Error getting key '%s' from cache: %v", key, err)
 		return
 	}
 	log.Printf(res.GetData())
@@ -243,7 +291,11 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 
 	// make new client if necessary
 	if nodeInfo.GrpcClient == nil {
-		c := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		c, err := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		if err != nil {
+			log.Printf("error: %v", err)
+			return
+		}
 		nodeInfo.SetGrpcClient(c)
 	}
 
@@ -254,7 +306,11 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 	// make request
 	_, err := nodeInfo.GrpcClient.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 	if err != nil {
-		log.Fatalf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
+		log.Printf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
+		for _, ringnode := range c.Ring.Nodes {
+			log.Printf("ringnode %s", ringnode.Id)
+		}
+		log.Printf("key %s nearest node is %s", key, nodeId)
 		return
 	}
 }
