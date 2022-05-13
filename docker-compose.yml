@@ -39,3 +39,15 @@ services:
       GIN_MODE: release
       GODEBUG: x509sha1=1   
 
+  cacheserver3:
+    # Configuration for building the docker image for the service
+    hostname: cacheserver3
+    build:
+      context: . # Use an image built from the specified dockerfile in the current directory.
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment: # Pass environment variables to the service
+      GIN_MODE: release
+      GODEBUG: x509sha1=1   
+
+

@@ -41,7 +41,11 @@ func (s *CacheServer) RunElection() {
 		defer cancel()
 
 		// make status request rpc
-		res, err := node.GrpcClient.GetPid(ctx, &pb.PidRequest{CallerPid: local_pid})
+		c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+		if err != nil {
+			s.logger.Infof("error creating grpc client to node node %s: %v", node.Id, err)
+		}
+		res, err := c.GetPid(ctx, &pb.PidRequest{CallerPid: local_pid})
 		if err != nil {
 			s.logger.Infof("PID request to node %s failed", node.Id)
 			continue
@@ -50,11 +54,18 @@ func (s *CacheServer) RunElection() {
 		// if response has a higher PID (use node id as tie-breaker), we send it an election request and wait to receive the election winner announcement.
 		s.logger.Infof("Received PID %d from node %s (vs local PID %d on node %s)", res.Pid, node.Id, local_pid, s.node_id)
 		if (local_pid < res.Pid) || (res.Pid == local_pid && s.node_id < node.Id) {
+
+			s.logger.Infof("Sending election request to node %s", node.Id)
+
+			c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+			if err != nil {
+				s.logger.Infof("error creating grpc client to node node %s: %v", node.Id, err)
+			}
+
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			
-			s.logger.Infof("Sending election request to node %s", node.Id)
-			_, err = node.GrpcClient.RequestElection(ctx, &pb.ElectionRequest{CallerPid: local_pid, CallerNodeId: s.node_id})
+
+			_, err = c.RequestElection(ctx, &pb.ElectionRequest{CallerPid: local_pid, CallerNodeId: s.node_id})
 			if err != nil {
 				s.logger.Infof("Error requesting node %s run an election: %v", node.Id, err)
 			}
@@ -76,6 +87,7 @@ func (s *CacheServer) RunElection() {
 	}
 	// if no other nodes have a higher PID, we are the winner
 	s.leader_id = s.node_id
+	s.logger.Infof("set leader as self: %s", s.node_id)
 
 	// announce ourselves as winner to other nodes
 	s.AnnounceNewLeader(s.leader_id)
@@ -96,14 +108,18 @@ func (s *CacheServer) AnnounceNewLeader(winner string) {
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
 
 		// make status request rpc
-		_, err := node.GrpcClient.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: winner})
+		c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+		if err != nil {
+			s.logger.Infof("error creating grpc client to node node %s: %v", node.Id, err)
+		}
+
+		_, err = c.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: winner})
 		if err != nil {
 			s.logger.Infof("Election winner announcement to node %s error: %v", node.Id, err)
-			continue
 		}
+		cancel()
 	}
 }
 
@@ -154,22 +170,35 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 		// case 2: we are the leader, so check for any dead nodes and remove them from cluster
 		} else {
 			modified := false
-			for _, node := range s.Ring.Nodes {
+			for _, node := range s.nodes_config.Nodes {
+				// skip self
+				if node.Id == s.node_id {
+					continue
+				}
 				// new identity service client
+				c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+				if err != nil {
+					s.logger.Infof("error creating grpc client to node node %s: %v", node.Id, err)
+					delete(s.nodes_config.Nodes, node.Id)
+					modified = true
+					continue
+				}
+
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 				defer cancel()
 
-				_, err := node.GrpcClient.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
+				s.logger.Infof("Checking health of node %s grpc client %v", node.Id, node.GrpcClient)
+				_, err = c.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
 				if err != nil {
-					s.logger.Infof("Node %s healthcheck returned error, removing from cluster", node.Id, err)
+					s.logger.Infof("Node %s healthcheck returned error, removing from cluster", node.Id)
 					delete(s.nodes_config.Nodes, node.Id)
-					s.Ring.RemoveNode(node.Id)
 					modified = true
 				}
 			}
 
 			// if cluster was modified, send out updated cluster config to other nodes
 			if modified {
+				s.logger.Info("Detected node config change, sending update to other nodes")
 				s.updateClusterConfigInternal()
 			}
 		}
@@ -187,14 +216,25 @@ func (s *CacheServer) IsLeaderAlive() bool {
 	if s.node_id == s.leader_id {
 		return true
 	}
-	leader := s.nodes_config.Nodes[s.leader_id]
+	s.logger.Infof("leader is %s", s.leader_id)
+	leader, ok := s.nodes_config.Nodes[s.leader_id]
+	if !ok {
+		s.logger.Infof("leader %s does not exist", leader)
+		return true
+	}
 
 	// new identity service client
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// make status request rpc
-	_, err := leader.GrpcClient.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
+	c, err := s.NewCacheClient(leader.Host, int(leader.GrpcPort))
+	if err != nil {
+		s.logger.Infof("error creating grpc client to node %s: %v", leader.Id, err)
+		return false
+	}
+
+	_, err = c.GetHeartbeat(ctx, &pb.HeartbeatRequest{CallerNodeId: s.node_id})
 	if err != nil {
 		s.logger.Infof("Leader healthcheck returned error: %v", err)
 		return false
@@ -204,6 +244,7 @@ func (s *CacheServer) IsLeaderAlive() bool {
 
 // gRPC handler for updating the leader after 
 func (s *CacheServer) UpdateLeader(ctx context.Context, request *pb.NewLeaderAnnouncement) (*pb.GenericResponse, error) {
+	s.logger.Infof("Received announcement leader is %s", request.LeaderId)
 	s.leader_id = request.LeaderId
 	s.decision_chan <- s.leader_id
 	return &pb.GenericResponse{Data: SUCCESS}, nil
@@ -219,15 +260,13 @@ func (s *CacheServer) GetHeartbeat(ctx context.Context, request *pb.HeartbeatReq
 // If the PID is higher than the caller PID, we take over the election process.
 func (s *CacheServer) GetPid(ctx context.Context, request *pb.PidRequest) (*pb.PidResponse, error) {
 	local_pid := int32(os.Getpid())
-	if local_pid > request.CallerPid {
-		go s.RunElection()
-	}
 	return &pb.PidResponse{Pid: local_pid}, nil
 }
 
 // gRPC handler which allows other nodes to ask this node to start a new election
 func (s *CacheServer) RequestElection(ctx context.Context, request *pb.ElectionRequest) (*pb.GenericResponse, error) {
 	// asynchronously run election and return successful response
+	s.logger.Infof("received request for election from %s", request.CallerNodeId)
 	go s.RunElection()
 	return &pb.GenericResponse{Data: SUCCESS}, nil
 }

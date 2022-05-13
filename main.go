@@ -34,13 +34,15 @@ func main() {
 	// set up grpc clients with each node in cluster
 	cache_server.CreateAllGrpcClients()
 
+	// register node with cluster
+	cache_server.RegisterNodeInternal()
+
 	// run initial election
 	cache_server.RunElection()
 
 	// start leader heartbeat monitor
 	go cache_server.StartLeaderHeartbeatMonitor()
 
-	cache_server.RegisterNodeInternal()
 
 	// run HTTP server
 	log.Printf("Running REST API server on port %d...", *rest_port)
