@@ -27,7 +27,6 @@ import (
 	"github.com/malwaredllc/minicache/pb"
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/lru_cache"
-	"github.com/malwaredllc/minicache/ring"
 
 	"sync"
 
@@ -41,7 +40,7 @@ const (
 )
 
 type CacheServer struct {
-	Ring				ring.Ring
+	//Ring				ring.Ring
 	router				*gin.Engine
 	cache				*lru_cache.LruCache
 	logger 				*zap.SugaredLogger 
@@ -234,7 +233,7 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func (s *CacheServer) NewCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+func (s *CacheServer) NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
 	// set up TLS
 	creds, err := LoadTLSCredentials()
 	if err != nil {
@@ -256,55 +255,56 @@ func (s *CacheServer) NewCacheClient(server_host string, server_port int) pb.Cac
 		grpc.WithTimeout(time.Duration(time.Second)),
 	)
 	if err != nil {
-		panic(err)
+		return nil, err	
 	}	
 
 	// set up client
-	return pb.NewCacheServiceClient(conn)
+	return pb.NewCacheServiceClient(conn), nil
 }
 
 // Register node with the cluster. This is a function to be called internally by server code (as 
 // opposed to the gRPC handler to register node, which is what receives the RPC sent by this function).
 func (s *CacheServer) RegisterNodeInternal() {
-	// wait for leader to be elected if not done
-	for {
-		if s.leader_id == NO_LEADER {
-			time.Sleep(time.Second)
+	s.logger.Infof("attempting to register %s with cluster", s.node_id)
+	local_node, _ := s.nodes_config.Nodes[s.node_id]
+	for _, randNode := range s.nodes_config.Nodes {
+		// skip self
+		if randNode.Id == s.node_id {
 			continue
 		}
-		break
-	}
+		req := pb.Node{
+			Id: local_node.Id, 
+			Host: local_node.Host, 
+			RestPort: local_node.RestPort, 
+			GrpcPort: local_node.GrpcPort,
+		}
 
-	leader, _ := s.nodes_config.Nodes[s.leader_id]
-	local_node, _ := s.nodes_config.Nodes[s.node_id]
-	req := pb.Node{
-		Id: local_node.Id, 
-		Host: local_node.Host, 
-		RestPort: local_node.RestPort, 
-		GrpcPort: local_node.GrpcPort,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err := randNode.GrpcClient.RegisterNodeWithCluster(ctx, &req)
+		if err != nil {
+			s.logger.Infof("error registering node %s with cluster: %v", s.node_id, err)
+			cancel()
+			continue
+		}
 
-	if leader.GrpcClient == nil {
-		c := s.NewCacheClient(leader.Host, int(leader.GrpcPort))
-		leader.SetGrpcClient(c)
-	}
-
-	_, err := leader.GrpcClient.RegisterNodeWithCluster(ctx, &req)
-	if err != nil {
-		s.logger.Infof("error registering node %s with cluster: %v", s.node_id, err)
+		s.logger.Infof("node %s is registered with cluster", s.node_id)
+		cancel()
 		return
 	}
-	s.logger.Infof("registered node %s with cluster", s.node_id)
 }
 
 // Set up a gRPC client for each node in cluster
 func (s *CacheServer) CreateAllGrpcClients() {
 	for _, node := range s.nodes_config.Nodes {
-		c := s.NewCacheClient(node.Host, int(node.GrpcPort))
-		node.SetGrpcClient(c)
-		s.logger.Infof("Created gRPC client to %s", node.Id)
+		if node.Id != s.node_id {
+			c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+			if err != nil {
+				s.logger.Infof("unable to connect to node %s", node.Id)
+				continue
+			}
+			node.SetGrpcClient(c)
+			s.logger.Infof("Created gRPC client to %s: %v", node.Id, node.GrpcClient)
+		}
 	}
 }
     

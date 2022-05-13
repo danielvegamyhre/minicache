@@ -1,1 +1,1 @@
-subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver2,IP:0.0.0.0,IP:127.0.0.1
+subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver2,DNS:cacheserver3,IP:0.0.0.0,IP:127.0.0.1
