@@ -23,18 +23,6 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 	// add node to hashmap config for easy lookup
 	s.nodes_config.Nodes[nodeInfo.Id] = node.NewNode(nodeInfo.Id, nodeInfo.Host, nodeInfo.RestPort, nodeInfo.GrpcPort)
 
-	// setup grpc client for new node
-	c, err := s.NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
-	if err != nil {
-		s.logger.Errorf("unable to connect to node %s", nodeInfo.Id)
-		return nil, status.Errorf(
-            codes.InvalidArgument,
-            fmt.Sprintf("Unable to connect to node being registered: %s", nodeInfo.Id),
-        )
-	}
-	s.nodes_config.Nodes[nodeInfo.Id].SetGrpcClient(c)
-	s.logger.Infof("Added gprc client %v to node %s", c, nodeInfo.Id)
-
 	// send update to other nodes in cluster
 	var nodes []*pb.Node
 	for _, node := range s.nodes_config.Nodes {
@@ -45,14 +33,20 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 		if node.Id == s.node_id {
 			continue
 		}
-		s.logger.Infof("Sending updated cluster config to node %s with grpc client %v", node.Id, node.GrpcClient)
 		// create context
 		req_ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		cfg := pb.ClusterConfig{Nodes: nodes}
-
-		node.GrpcClient.UpdateClusterConfig(req_ctx, &cfg)
+		c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+		if err != nil {
+			s.logger.Errorf("unable to connect to node %s", node.Id)
+			return nil, status.Errorf(
+	            codes.InvalidArgument,
+	            fmt.Sprintf("Unable to connect to node being registered: %s", node.Id),
+	        )
+		}
+		c.UpdateClusterConfig(req_ctx, &cfg)
 	}
 	return &pb.GenericResponse{Data: SUCCESS}, nil
 }
@@ -70,25 +64,9 @@ func (s *CacheServer) GetClusterConfig(ctx context.Context, req *pb.ClusterConfi
 // gRPC handler for updating cluster config with incoming info
 func (s *CacheServer) UpdateClusterConfig(ctx context.Context, req *pb.ClusterConfig) (*empty.Empty, error) {
 	s.logger.Info("Updating cluster config")
-	// for each node in incoming config, if it isn't in our current config, add it
 	s.nodes_config.Nodes = make(map[string]*node.Node)
 	for _, nodecfg := range req.Nodes {
-
-		// add new node to ring
-		newNode := node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-
-		// set up grpc client to new node
-		c, err := s.NewCacheClient(nodecfg.Host, int(nodecfg.GrpcPort))
-		if err != nil {
-			s.logger.Errorf("unable to connect to node %s", nodecfg.Id)
-			continue
-		}
-		newNode.SetGrpcClient(c)
-		s.logger.Infof("added grpc client %v to node %s", c, nodecfg.Id)
-
-		// add new node to config
-		s.nodes_config.Nodes[nodecfg.Id] = newNode
-
+		s.nodes_config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
 	}
 	return &empty.Empty{}, nil
 }
@@ -113,7 +91,15 @@ func (s *CacheServer) updateClusterConfigInternal() {
 
 		cfg := pb.ClusterConfig{Nodes: nodes}
 
-		_, err := node.GrpcClient.UpdateClusterConfig(req_ctx, &cfg)
+		c, err := s.NewCacheClient(node.Host, int(node.GrpcPort))
+
+		// skip node if error
+		if err != nil {
+			s.logger.Errorf("unable to connect to node %s", node.Id)
+			continue
+		}
+
+		_, err = c.UpdateClusterConfig(req_ctx, &cfg)
 		if err != nil {
 			s.logger.Infof("error sending cluster config to node %s: %v", node.Id, err)
 		}

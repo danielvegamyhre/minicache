@@ -50,4 +50,3 @@ services:
       GIN_MODE: release
       GODEBUG: x509sha1=1   
 
-

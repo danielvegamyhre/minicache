@@ -50,28 +50,28 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				}
 
 				// mark visited and request leader
-				log.Printf("Attempting to get leader from node %s", randnode.Id)
 				attempted[randnode.Id] = true
 
-				if randnode.GrpcClient == nil {
-					c, err := NewCacheClient(randnode.Host, int(randnode.GrpcPort))
-					if err != nil {
-						log.Printf("error: %v", err)
-						return
-					}
-					randnode.SetGrpcClient(c)
-				}
-
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				res, err := randnode.GrpcClient.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
+				// skip node we can't connect to
+				client, err := NewCacheClient(randnode.Host, int(randnode.GrpcPort))
 				if err != nil {
 					continue
 				}
 
-				log.Printf("Found leader: %s", res.Id)
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				res, err := client.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
+				if err != nil {
+					continue
+				}
+
 				leader = c.Config.Nodes[res.Id]
 				break
+			}
+
+			if leader == nil {
+				continue
 			}
 
 
@@ -80,7 +80,13 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			res, err := leader.GrpcClient.GetClusterConfig(ctx, &req)
+			// restart process if we can't connect to leader
+			client, err := NewCacheClient(leader.Host, int(leader.GrpcPort))
+			if err != nil {
+				continue
+			}
+
+			res, err := client.GetClusterConfig(ctx, &req)
 			if err != nil {
 				log.Printf("error getting cluster config from node %s: %v", leader.Id, err)
 				continue
@@ -113,7 +119,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 			}
 
 			// sleep for 5 seconds then check again
-			time.Sleep(5 * time.Second)
+			time.Sleep(time.Second)
 		}
 	}()
 }
@@ -200,7 +206,7 @@ func NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient,
 }
 
 // Get item from cache. Hash the key to find which node has the value stored.
-func (c *ClientWrapper) Get(key string) string {
+func (c *ClientWrapper) Get(key string) (string, error) {
 	// find node which contains the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
@@ -209,7 +215,7 @@ func (c *ClientWrapper) Get(key string) string {
 	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.RestPort))
 
 	if err != nil {
-        log.Fatal(err)
+        return "", errors.New(fmt.Sprintf("error sending GET request: %s", err))
     }
 
     defer resp.Body.Close()
@@ -217,14 +223,14 @@ func (c *ClientWrapper) Get(key string) string {
     body, err := ioutil.ReadAll(resp.Body)
 
     if err != nil {
-        log.Fatal(err)
+        return "", errors.New(fmt.Sprintf("error reading response: %s", err))
     }
 
-    return string(body)
+    return string(body), nil
 }
 
 // Put key-value pair into cache. Hash the key to find which node to store it in.
-func (c *ClientWrapper) Put(key string, value string) string {
+func (c *ClientWrapper) Put(key string, value string) error {
 	// find node to put the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
@@ -238,25 +244,18 @@ func (c *ClientWrapper) Put(key string, value string) string {
 	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.RestPort)
 	req, err := http.NewRequest("POST", host, b)
 	if err != nil {
-	   log.Fatal(err)
+		return errors.New(fmt.Sprintf("error creating POST request: %s", err))
 	}
 
 	// check response
-	resp, err := new(http.Client).Do(req)
+	_, err = new(http.Client).Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return errors.New(fmt.Sprintf("error sending POST request: %s", err))
 	}
-
-    defer resp.Body.Close()
-
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        log.Fatal(err)
-    }
-	return string(body)
+	return nil
 }
 
-func (c *ClientWrapper) GetGrpc(key string) {
+func (c *ClientWrapper) GetGrpc(key string) (string, error) {
 	// find node which contains the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
@@ -265,8 +264,7 @@ func (c *ClientWrapper) GetGrpc(key string) {
 	if nodeInfo.GrpcClient == nil {
 		c, err := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
 		if err != nil {
-			log.Printf("error: %v", err)
-			return
+			return "", errors.New(fmt.Sprintf("error making gRPC client: %s", err))
 		}
 		nodeInfo.SetGrpcClient(c)
 	}
@@ -278,13 +276,12 @@ func (c *ClientWrapper) GetGrpc(key string) {
 	// make request
 	res, err := nodeInfo.GrpcClient.Get(ctx, &pb.GetRequest{Key: key})
 	if err != nil {
-		log.Printf("Error getting key '%s' from cache: %v", key, err)
-		return
+		return "", errors.New(fmt.Sprintf("error making gRPC Get call: %s", err))
 	}
-	log.Printf(res.GetData())
+	return res.GetData(), nil
 }
 
-func (c *ClientWrapper) PutGrpc(key string, value string) {
+func (c *ClientWrapper) PutGrpc(key string, value string) error {
 	// find node which contains the item
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Config.Nodes[nodeId]
@@ -293,8 +290,7 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 	if nodeInfo.GrpcClient == nil {
 		c, err := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
 		if err != nil {
-			log.Printf("error: %v", err)
-			return
+			return errors.New(fmt.Sprintf("error making gRPC client: %s", err))
 		}
 		nodeInfo.SetGrpcClient(c)
 	}
@@ -306,13 +302,9 @@ func (c *ClientWrapper) PutGrpc(key string, value string) {
 	// make request
 	_, err := nodeInfo.GrpcClient.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 	if err != nil {
-		log.Printf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
-		for _, ringnode := range c.Ring.Nodes {
-			log.Printf("ringnode %s", ringnode.Id)
-		}
-		log.Printf("key %s nearest node is %s", key, nodeId)
-		return
+		return errors.New(fmt.Sprintf("error making gRPC Put call: %s", err))
 	}
+	return nil
 }
 
 // Utility function to set up mTLS config and credentials
