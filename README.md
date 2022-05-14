@@ -4,7 +4,7 @@
 
 This may not be the best distributed cache, but it is a distributed cache.
 
-Features:
+## Features:
 
 ### LRU eviction policy with O(1) operations
 - Least-recently-used eviction policy with a configurable cache capacity ensures low cache-miss rate
@@ -21,3 +21,7 @@ Features:
 
 ### No single point of failure
 - The distributed election algorithm allows any nodes to arbitrarily join/leave cluster at any time, and there is always guaranteed to be a leader tracking the state of nodes in the cluster to provide to clients for consistent hashing.
+
+------------
+
+## Example Usage 

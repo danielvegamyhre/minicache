@@ -43,6 +43,10 @@ func (r *Ring) RemoveNode(id string) error {
 }
 
 func (r *Ring) Get(id string) string {
+	// handle empty ring
+	if len(r.Nodes) == 0 {
+		panic("CONSISTENT HASHING RING IS EMPTY")
+	}
 	i := r.search(id)
 	if i >= r.Nodes.Len() {
 		i = 0
