@@ -73,10 +73,13 @@ func (s *CacheServer) RunElection() {
 			s.logger.Info("Waiting for decision...")
 			// if after 5 seconds we receive no winner announcement, start the election process over
 			select {
-			case s.leader_id = <-s.decision_chan:
-				s.logger.Infof("Received decision: Leader is node %s", s.leader_id)
-				s.election_status = NO_ELECTION_RUNNING
-				return	
+			case winner := <-s.decision_chan:
+				if winner != "" {
+					s.leader_id = winner
+					s.logger.Infof("Received decision: Leader is node %s", s.leader_id)
+					s.election_status = NO_ELECTION_RUNNING
+					return	
+				}
 			case <-time.After(5*time.Second):
 				s.logger.Info("Timed out waiting for decision. Starting new election.")
 				s.RunElection()
@@ -219,7 +222,7 @@ func (s *CacheServer) IsLeaderAlive() bool {
 	s.logger.Infof("leader is %s", s.leader_id)
 	leader, ok := s.nodes_config.Nodes[s.leader_id]
 	if !ok {
-		s.logger.Infof("leader %s does not exist", leader)
+		s.logger.Infof("leader %s does not exist", s.leader_id)
 		return true
 	}
 

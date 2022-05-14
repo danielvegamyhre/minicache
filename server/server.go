@@ -15,7 +15,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"log"
 	"time"
+	"net"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -59,9 +61,15 @@ type Pair struct {
 	Value	string 	`json:"value"`	
 }
 
+const (
+	DYNAMIC = "DYNAMIC"
+)
+
 // Utility function for creating a new gRPC server secured with mTLS, and registering a cache server service with it.
+// Set node_id param to DYNAMIC to dynamically discover node id. 
+// Otherwise, manually set it to a valid node_id from the config file.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
-func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Server, *CacheServer) {	
+func GetNewCacheServer(capacity int, config_file string, verbose bool, node_id string) (*grpc.Server, *CacheServer) {	
 	// set up logging
 	sugared_logger := GetSugaredZapLogger(verbose)
 
@@ -69,13 +77,24 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 	nodes_config := node.LoadNodesConfig(config_file)
 
 	// determine which node id we are and which group we are in
-	node_id := node.GetCurrentNodeId(nodes_config)
+	var final_node_id string
+	if node_id == DYNAMIC {
+		final_node_id = node.GetCurrentNodeId(nodes_config)
 
-	// if this is not one of the initial nodes in the config file, add it dynamically
-	if _, ok := nodes_config.Nodes[node_id]; !ok {
-		host, _ := os.Hostname()
-		nodes_config.Nodes[node_id] = node.NewNode(node_id, host, 8080, 5005)
+		// if this is not one of the initial nodes in the config file, add it dynamically
+		if _, ok := nodes_config.Nodes[final_node_id]; !ok {
+			host, _ := os.Hostname()
+			nodes_config.Nodes[final_node_id] = node.NewNode(final_node_id, host, 8080, 5005)
+		}
+	} else {
+		final_node_id = node_id
+
+		// if this is not one of the initial nodes in the config file, panic
+		if _, ok := nodes_config.Nodes[final_node_id]; !ok {
+			panic("given node ID not found in config file")
+		}
 	}
+
 
 	// set up gin router
 	router := gin.New()
@@ -91,6 +110,7 @@ func GetNewCacheServer(capacity int, config_file string, verbose bool) (*grpc.Se
 		logger: 			sugared_logger,
 		nodes_config: 	 	nodes_config,
 		node_id: 			node_id,
+		leader_id: 			NO_LEADER,
 		decision_chan:		make(chan string, 1),
 	}
 
@@ -301,4 +321,36 @@ func (s *CacheServer) RegisterNodeInternal() {
 	}
 }
 
-    
+func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) {
+	log.Printf("Creating and running all nodes from config file: %s", config_file)
+	config := node.LoadNodesConfig(config_file)
+
+	for _, nodeInfo := range config.Nodes {
+		// set up listener TCP connectiion
+		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", nodeInfo.GrpcPort))
+		if err != nil {
+			panic(err)
+		}
+
+		// get new grpc id server
+		grpc_server, cache_server := GetNewCacheServer(capacity, config_file, verbose, nodeInfo.Id)
+
+		// run gRPC server
+		log.Printf("Running gRPC server on port %d...", nodeInfo.GrpcPort)
+		go grpc_server.Serve(listener)
+
+		// register node with cluster
+		cache_server.RegisterNodeInternal()
+
+		// run initial election
+		cache_server.RunElection()
+
+		// start leader heartbeat monitor
+		go cache_server.StartLeaderHeartbeatMonitor()
+
+
+		// run HTTP server
+		log.Printf("Running REST API server on port %d...", nodeInfo.RestPort)
+		go cache_server.RunHttpServer(int(nodeInfo.RestPort))
+	}
+}
