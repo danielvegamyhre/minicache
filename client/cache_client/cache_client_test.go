@@ -31,7 +31,7 @@ func Test10kConcurrentRestApiPutsDocker(t *testing.T) {
 		}()
 	}	
 	wg.Wait()
-	t.Logf("Cache misses: %d/100,000 (%f%%)", int(miss), miss/100000)
+	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
 
 
@@ -60,5 +60,5 @@ func Test10kConcurrentGrpcPutsDocker(t *testing.T) {
 		}()
 	}	
 	wg.Wait()
-	t.Logf("Cache misses: %df100,000 (%f%%)", int(miss), miss/100000)
+	t.Logf("Cache misses: %df10,000 (%f%%)", int(miss), miss/10000)
 }
