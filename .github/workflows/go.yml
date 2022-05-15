@@ -22,6 +22,16 @@ jobs:
       run: go build -v ./...
 
     - name: Test LRU Cache
-      run: go test -v ./...
+      run: go test -v ./lru_cache
+      env:
+        GODEBUG: x509sha1=1
+
+    - name: Test Consistent Hashing Ring
+      run: go test -v ./ring
+      env:
+        GODEBUG: x509sha1=1
+
+    - name: Integration Tests
+      run: go test -v
       env:
         GODEBUG: x509sha1=1
