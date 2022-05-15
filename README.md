@@ -2,7 +2,7 @@
 
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
-This may not be the best distributed cache, but it is a distributed cache.
+Distributed cache which supports client-side consistent hashing, arbitrary cluster sizes, mTLS, and both HTTP/gRPC interfaces for gets/puts. 
 
 ## Contents 
 
