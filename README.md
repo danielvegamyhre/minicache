@@ -20,9 +20,19 @@ Distributed cache which supports:
 	- [Support for both HTTP/gRPC](https://github.com/malwaredllc/minicache#supports-both-rest-api-and-grpc)
 	- [mTLS for maximum security](https://github.com/malwaredllc/minicache#mtls-for-maximum-security)
 - [Performance/Benchmarking](https://github.com/malwaredllc/minicache#performance)
-	- []
+	- [LRU Cache direct usage performance](https://github.com/malwaredllc/minicache#1-lru-cache-implemtation-ran-directly-by-a-test-program-417-million-putssecond)
+	- [Local distributed cache performance](https://github.com/malwaredllc/minicache#2-distributed-cache-running-locally-with-storage-via-grpc-calls-over-local-network-17000-putssecond)
+	- [Distributed cache ran in Docker containers](https://github.com/malwaredllc/minicache#3-distributed-cache-storage-running-in-docker-containers-with-storage-via-grpc-calls-1150-putssecond)
+
 - [Testing](https://github.com/malwaredllc/minicache#testing)
+	- [Unit testing](https://github.com/malwaredllc/minicache#1-unit-tests)
+	- [Integration testing](https://github.com/malwaredllc/minicache#2-integration-tests)
+	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go)
 - [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
+	- [Running a distributed cache with Docker Compose](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
+	- [Running a single cache server](https://github.com/malwaredllc/minicache#usage-example-2-starting-a-single-cache-server)
+	- [Running all cache servers defined in a config file](https://github.com/malwaredllc/minicache#usage-example-3-starting-all-cache-servers-defined-in-config-file)
+	- [Creating and using a cache client](https://github.com/malwaredllc/minicache#usage-example-4-creating-and-using-a-cache-client)
 
 <img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
 
@@ -94,6 +104,8 @@ $ go test -v main_test.go
 ### 1. Unit tests
 - LRU Cache implementation has exhaustive unit tests for correctness in all possible scenarios (see [lru_cache_test.go](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go))
 - Run the unit tests with the command `go test -v ./lru_cache`
+- Consistent hashing ring contains exhaustive unit tests for various scenarios (see [ring_test.go](https://github.com/malwaredllc/minicache/blob/main/ring/ring_test.go))
+- Run these unit tests with the command `go test -v ./ring`
 
 ### 2. Integration tests
 Run the integration tests with the command `go test -v main_test.go`, which performs the following steps:
