@@ -21,7 +21,7 @@ const (
 func Test10kConcurrentRestApiPuts(t *testing.T) {
 	// start servers
 	capacity := 100
-	verbose := true
+	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
@@ -34,6 +34,10 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
 	miss := 0.0
+
+
+	// start timer
+	start := time.Now()
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -51,6 +55,8 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 		}()
 	}	
 	wg.Wait()
+	elapsed := time.Since(start)
+	t.Logf("Time to complete 10k puts via gRPC: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 
 	// cleanup
@@ -71,7 +77,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 func Test10kConcurrentGrpcPuts(t *testing.T) {
 	// start servers
 	capacity := 100
-	verbose := true
+	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
@@ -86,6 +92,8 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	var mutex sync.Mutex
 	miss := 0.0
 
+	// start timer
+	start := time.Now()
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
@@ -102,6 +110,8 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 		}()
 	}	
 	wg.Wait()
+	elapsed := time.Since(start)
+	t.Logf("Time to complete 10k puts via REST API: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 
 	// cleanup

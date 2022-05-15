@@ -19,7 +19,6 @@ This may not be the best distributed cache, but it is a distributed cache.
 - Client uses [consistent hashing](https://en.wikipedia.org/wiki/Consistent_hashing) to uniformly distribute requests and minimize required re-mappings when servers join/leave the cluster
 - Client automatically monitors the cluster state stored on the leader node for any changes and updates its consistent hashing ring accordingly
 
-
 ### Distributed leader election algorithm
 - [Bully election algorithm](https://en.wikipedia.org/wiki/Bully_algorithm) used to elect a leader node for the cluster, which is in charge of monitoring the state of the nodes in the cluster to provide to clients so they can maintain a consistent hashing ring and route requests to the correct nodes
 - Follower nodes monitor heartbeat of leader and run a new election if it goes down
@@ -34,7 +33,29 @@ This may not be the best distributed cache, but it is a distributed cache.
 ### Supports both REST API and gRPC
 - Make gets/puts with the simple familiar interfaces of HTTP/gRPC 
 
+### mTLS for maximum security
+- minicache uses [mutual TLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/), with mutual authentication between client and server for maximum security.
+
+### Performance
+- 10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test:
+
+```
+$ go test -v main_test.go
+...
+    main_test.go:114: Time to complete 10k puts via gRPC: 588.774872ms
+    main_test.go:115: Cache misses: 0/10,000 (0.000000%)
+```
+
+Test environment:
+- **2013 MacBook Pro**
+- **Processor**: 2.4 GHz Intel Core i5
+- **Memory**: 8 GB 1600 MHz DDR3 
+
+
+- REST API is much slower at ~18 seconds (TODO: why???)
+
 ------------
+
 ## Testing
 
 ### Unit tests
@@ -54,10 +75,22 @@ Run the integration tests with the command `go test -v main_test.go`, which perf
 
 -------------
 
-## Example: Run Distributed Cache Using Docker Containers
-1. Run `docker-compose build` from the project root directory to build the Docker images
-2. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
-3. Run `docker build -t cacheclient -f Dockerfile.client .` from the project root directory to build a Docker image for the client.
-4. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
+## Usage Example: Run Distributed Cache Using Docker Containers
+
+1. **Generate TLS certificates**: update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running, then run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`.
+
+By default, the following hostnames and IPs are defined in the config files:
+
+```
+subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver2,DNS:cacheserver3,IP:0.0.0.0,IP:127.0.0.1
+```
+
+2. Run `docker-compose build` from the project root directory to build the Docker images.
+
+3. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
+
+4. Run `docker build -t cacheclient -f Dockerfile.client .` from the project root directory to build a Docker image for the client.
+
+5. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
 
 
