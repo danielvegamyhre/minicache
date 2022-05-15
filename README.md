@@ -3,12 +3,12 @@
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
 Distributed cache which supports:
-- client-side consistent hashing
+- client-side consistent hashing to support fault-tolerance by minimizing the number of key re-remappings required in the event of node failure
 - arbitrary cluster sizes
-- distributed leader election
+- distributed leader election algorithm and leader heartbeat monitor which ensure no single-point of failure
 - both HTTP/gRPC interfaces for gets/puts
 - mTLS secured communication (gRPC only for now, adding to HTTP/REST API soon)
-- Dockerfiles to simplify cloud deployments
+- Dockerfiles to support containerized deployments
 
 ## Contents 
 
