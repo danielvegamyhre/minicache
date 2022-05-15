@@ -2,7 +2,12 @@
 
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
-Distributed cache which supports client-side consistent hashing, arbitrary cluster sizes, mTLS, and both HTTP/gRPC interfaces for gets/puts. 
+Distributed cache which supports:
+- client-side consistent hashing
+- arbitrary cluster sizes
+- distributed leader election
+- both HTTP/gRPC interfaces for gets/puts
+- mTLS secured communication (gRPC only for now, adding to HTTP/REST API soon)
 
 ## Contents 
 
