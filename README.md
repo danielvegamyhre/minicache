@@ -2,9 +2,9 @@
 
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
-![diagram](https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png)
-
 This may not be the best distributed cache, but it is a distributed cache.
+
+<img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=200>
 
 ----------
 
