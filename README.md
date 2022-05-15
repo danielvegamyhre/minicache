@@ -45,7 +45,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 ### Thread-safe LRU cache with O(1) operations
 - Least-recently-used eviction policy with a configurable cache capacity ensures low cache-miss rate
 - Get/Put operations and eviction run all run in **O(1) time**
-- LRU cache implementation is thread safe
+- LRU cache implementation is made thread safe by use of Go synchronization primitives
 
 ### Consistent Hashing
 - Client uses [consistent hashing](https://en.wikipedia.org/wiki/Consistent_hashing) to uniformly distribute requests and minimize required re-mappings when servers join/leave the cluster
