@@ -9,8 +9,6 @@ RUN go mod download && go mod verify
 
 COPY . .
 
-WORKDIR /usr/src/app/client
-RUN go build
 WORKDIR /usr/src/app/client/cache_client
 ENV GODEBUG=x509sha1=1
 

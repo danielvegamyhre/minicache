@@ -52,9 +52,9 @@ Distributed cache which supports:
 ---------------
 
 ## Performance
-- **LRU Cache implemtation ran directly by a test program**: ~4.17 million puts/second
+1. **LRU Cache implemtation ran directly by a test program**: ~4.17 million puts/second
 
-- **Distributed cache storage via gRPC calls over local network**: ~17,000 puts/second (10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test):
+2. **Distributed cache running locally with storage via gRPC calls over local network**: ~17,000 puts/second (10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test):
 
 ```
 $ go test -v main_test.go
@@ -63,13 +63,16 @@ $ go test -v main_test.go
     main_test.go:115: Cache misses: 0/10,000 (0.000000%)
 ```
 
-Test environment:
+3. **Distributed cache storage running in Docker containers with storage via gRPC calls**: 1150 puts/second (10,000 items stored in cache via gRPC calls in 8.69 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test)
+
+```
+cache_client_docker_test.go:95: Time to complete 10k puts via REST API: 8.6985474s
+``` 
+
+### Test environment:
 - **2013 MacBook Pro**
 - **Processor**: 2.4 GHz Intel Core i5
 - **Memory**: 8 GB 1600 MHz DDR3 
-
-
-- REST API is much slower at ~18 seconds (TODO: why???)
 
 ------------
 
@@ -147,10 +150,32 @@ func main() {
 	// start leader heartbeat monitor
 	go cache_server.StartLeaderHeartbeatMonitor()
 
-
 	// run HTTP server
 	log.Printf("Running REST API server on port %d...", *rest_port)
-	cache_server.RunAndReturnHttpServer(*rest_port)
+	http_server := cache_server.RunAndReturnHttpServer(*rest_port)
+
+	// set up shutdown handler and block until sigint or sigterm received
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-c
+
+		log.Printf("Shutting down gRPC server...")
+		grpc_server.Stop()
+
+
+		log.Printf("Shutting down HTTP server...")
+	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	    defer cancel()
+
+	    if err := http_server.Shutdown(ctx); err != nil {
+	        log.Printf("Http server shutdown error: %s", err)
+	    }
+		os.Exit(0)
+	}()
+
+	// block indefinitely
+	select {}
 }
 ```
 
@@ -164,7 +189,20 @@ func main() {
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
 	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
+	
 	...
+
+	// cleanup
+	for _, srv_comps := range components {
+		srv_comps.GrpcServer.Stop()
+
+	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	    defer cancel()
+
+	    if err := srv_comps.HttpServer.Shutdown(ctx); err != nil {
+	        t.Logf("Http server shutdown error: %s", err)
+	    }
+	}
 ```
 
 ## Usage Example 4: Creating and Using a Cache Client
@@ -173,15 +211,10 @@ func main() {
 	// start client
 	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path)
 	c.StartClusterConfigWatcher()
-
 	...
-
 	c.Put(key, value)
-
 	...
-
 	val := c.Get(key)
-	
 ```
 
 ---------------
