@@ -2,6 +2,8 @@
 
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
+![diagram](https://github.com/malwaredllc/minicache/docs/consistent_hashing_ring.png)
+
 This may not be the best distributed cache, but it is a distributed cache.
 
 ----------
@@ -16,6 +18,7 @@ This may not be the best distributed cache, but it is a distributed cache.
 ### Consistent Hashing
 - Client uses [consistent hashing](https://en.wikipedia.org/wiki/Consistent_hashing) to uniformly distribute requests and minimize required re-mappings when servers join/leave the cluster
 - Client automatically monitors the cluster state stored on the leader node for any changes and updates its consistent hashing ring accordingly
+
 
 ### Distributed leader election algorithm
 - [Bully election algorithm](https://en.wikipedia.org/wiki/Bully_algorithm) used to elect a leader node for the cluster, which is in charge of monitoring the state of the nodes in the cluster to provide to clients so they can maintain a consistent hashing ring and route requests to the correct nodes
