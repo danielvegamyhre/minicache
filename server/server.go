@@ -84,8 +84,9 @@ func NewCacheServer(capacity int, config_file string, verbose bool, node_id stri
 	// determine which node id we are and which group we are in
 	var final_node_id string
 	if node_id == DYNAMIC {
+		log.Printf("passed node id: %s", node_id)
 		final_node_id = node.GetCurrentNodeId(nodes_config)
-
+		log.Printf("final node id: %s", final_node_id)
 		// if this is not one of the initial nodes in the config file, add it dynamically
 		if _, ok := nodes_config.Nodes[final_node_id]; !ok {
 			host, _ := os.Hostname()
@@ -114,7 +115,7 @@ func NewCacheServer(capacity int, config_file string, verbose bool, node_id stri
 		cache:				&lru,	
 		logger: 			sugared_logger,
 		nodes_config: 	 	nodes_config,
-		node_id: 			node_id,
+		node_id: 			final_node_id,
 		leader_id: 			NO_LEADER,
 		decision_chan:		make(chan string, 1),
 	}

@@ -6,6 +6,11 @@ import (
 	"github.com/malwaredllc/minicache/server"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"context"
+	"time"
+	"syscall"
 )
 
 func main() {
@@ -40,8 +45,30 @@ func main() {
 	// start leader heartbeat monitor
 	go cache_server.StartLeaderHeartbeatMonitor()
 
-
 	// run HTTP server
 	log.Printf("Running REST API server on port %d...", *rest_port)
-	cache_server.RunAndReturnHttpServer(*rest_port)
+	http_server := cache_server.RunAndReturnHttpServer(*rest_port)
+
+	// set up shutdown handler and block until sigint or sigterm received
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-c
+
+		log.Printf("Shutting down gRPC server...")
+		grpc_server.Stop()
+
+
+		log.Printf("Shutting down HTTP server...")
+	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	    defer cancel()
+
+	    if err := http_server.Shutdown(ctx); err != nil {
+	        log.Printf("Http server shutdown error: %s", err)
+	    }
+		os.Exit(0)
+	}()
+
+	// block indefinitely
+	select {}
 }
