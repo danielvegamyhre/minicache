@@ -8,6 +8,7 @@ Distributed cache which supports:
 - distributed leader election
 - both HTTP/gRPC interfaces for gets/puts
 - mTLS secured communication (gRPC only for now, adding to HTTP/REST API soon)
+- Dockerfiles to simplify cloud deployments
 
 ## Contents 
 
@@ -104,4 +105,12 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 
 5. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
 
+**PRO TIP**: a useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time.
 
+---------------
+
+## To Do
+- TLS for REST API
+- Improve performance of REST API
+- Improve code quality and project organization
+- Documentation
