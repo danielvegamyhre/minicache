@@ -12,10 +12,17 @@ Distributed cache which supports:
 
 ## Contents 
 
-1. [Features](https://github.com/malwaredllc/minicache#features)
-2. [Performance](https://github.com/malwaredllc/minicache#performance)
-3. [Testing](https://github.com/malwaredllc/minicache#testing)
-4. [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
+- [Features](https://github.com/malwaredllc/minicache#features)
+	- [Thread-safe LRU cache with O(1) Operations](https://github.com/malwaredllc/minicache#thread-safe-lru-cache-with-o1-operations)
+	- [Consistent Hashing and Fault-Tolerance](https://github.com/malwaredllc/minicache#consistent-hashing)
+	- [Distributed leader election algorithm](https://github.com/malwaredllc/minicache#distributed-leader-election-algorithm)
+	- [No single point of failure](https://github.com/malwaredllc/minicache#no-single-point-of-failure)
+	- [Support for both HTTP/gRPC](https://github.com/malwaredllc/minicache#supports-both-rest-api-and-grpc)
+	- [mTLS for maximum security](https://github.com/malwaredllc/minicache#mtls-for-maximum-security)
+- [Performance/Benchmarking](https://github.com/malwaredllc/minicache#performance)
+	- []
+- [Testing](https://github.com/malwaredllc/minicache#testing)
+- [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
 
 <img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
 
@@ -52,9 +59,11 @@ Distributed cache which supports:
 ---------------
 
 ## Performance
-1. **LRU Cache implemtation ran directly by a test program**: ~4.17 million puts/second
+### LRU Cache implemtation ran directly by a test program: ~4.17 million puts/second
 
-2. **Distributed cache running locally with storage via gRPC calls over local network**: ~17,000 puts/second (10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test):
+### Distributed cache running locally with storage via gRPC calls over local network: ~17,000 puts/second 
+
+10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
 
 ```
 $ go test -v main_test.go
@@ -63,7 +72,9 @@ $ go test -v main_test.go
     main_test.go:115: Cache misses: 0/10,000 (0.000000%)
 ```
 
-3. **Distributed cache storage running in Docker containers with storage via gRPC calls**: 1150 puts/second (10,000 items stored in cache via gRPC calls in 8.69 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test)
+### Distributed cache storage running in Docker containers with storage via gRPC calls: 1150 puts/second
+
+10,000 items stored in cache via gRPC calls in 8.69 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
 
 ```
 # docker run --network minicache_default cacheclient
