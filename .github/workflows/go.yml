@@ -21,6 +21,11 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Generate Certificates
+      run: |
+        cd certs
+        ./gen.sh
+
     - name: Test LRU Cache
       run: go test -v ./lru_cache
       env:
