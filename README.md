@@ -143,19 +143,28 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 
 ## Usage
 
+### 1. Define initial nodes
+
+You will need to define 1 or more initial "genesis" nodes in a JSON config file (see [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) or [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) for working examples). 
+
+These genesis nodes are the original nodes of the cluster, which any new nodes created later on will attempt to contact in order to dynamically register themselves with the cluster. As long as at least 1 of these initial nodes is online, any arbitrary number of new nodes can be spun up (e.g. launching more cache server containers from an image) without defining them in a config file, rebuilding the image etc. 
+
+Therefore it is recommended to define at least 3 initial nodes to support fault-tolerance to a reasonable level.
+
+
+### 2. Generate TLS certificates
 Before using minicache you will need to generate TLS certificates by performing the following steps:
 
-1. Update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running. If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`. By default, the following hostnames and IPs are defined in the config files (note the hostnames match those defined in `docker-compose.yml`):
+- Update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running. If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`. By default, the following hostnames and IPs are defined in the config files (note the hostnames match those defined in `docker-compose.yml`):
 
 ```
 subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver2,DNS:cacheserver3,IP:0.0.0.0,IP:127.0.0.1
 ```
 
-2. Run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). 
+- Run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). 
 
 
-
-## Example 1: Run Distributed Cache Using Docker Containers
+### Example 1: Run Distributed Cache Using Docker Containers
 
 **NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
@@ -169,7 +178,7 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 
 **PRO TIP**: a useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time.
 
-## Example 2: Starting All Cache Servers Defined in Config File
+### Example 2: Starting All Cache Servers Defined in Config File
 
 **NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
@@ -197,7 +206,7 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 	}
 ```
 
-## Example 3: Starting a Single Cache Server
+### Example 3: Starting a Single Cache Server
 
 **NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
@@ -262,7 +271,7 @@ func main() {
 }
 ```
 
-## Example 4: Creating and Using a Cache Client
+### Example 4: Creating and Using a Cache Client
 
 **NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
