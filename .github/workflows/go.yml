@@ -26,3 +26,6 @@ jobs:
 
     - name: Test Consistent Hashing Ring
       run: go test -v ./ring
+
+    - name: Integration Tests
+      run: go test -v main_test.go
