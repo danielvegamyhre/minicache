@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"testing"
 	"strconv"
 	"sync"
+	"time"
 	"path/filepath"
 	"github.com/malwaredllc/minicache/server"
 	"github.com/malwaredllc/minicache/client/cache_client"
@@ -23,7 +25,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
-	server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
 
 	// start client
 	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path)
@@ -50,6 +52,18 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	}	
 	wg.Wait()
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
+
+	// cleanup
+	for _, srv_comps := range components {
+		srv_comps.GrpcServer.Stop()
+
+	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	    defer cancel()
+
+	    if err := srv_comps.HttpServer.Shutdown(ctx); err != nil {
+	        t.Logf("Http server shutdown error: %s", err)
+	    }
+	}
 }
 
 
@@ -61,7 +75,7 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
-	server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
 
 	// start client
 	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path)
@@ -89,4 +103,16 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	}	
 	wg.Wait()
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
+
+	// cleanup
+	for _, srv_comps := range components {
+		srv_comps.GrpcServer.Stop()
+
+	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	    defer cancel()
+
+	    if err := srv_comps.HttpServer.Shutdown(ctx); err != nil {
+	        t.Logf("Http server shutdown error: %s", err)
+	    }
+	}
 }

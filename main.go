@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// get new grpc id server
-	grpc_server, cache_server := server.GetNewCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC)
+	grpc_server, cache_server := server.NewCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC)
 
 	// run gRPC server
 	log.Printf("Running gRPC server on port %d...", *grpc_port)
@@ -43,5 +43,5 @@ func main() {
 
 	// run HTTP server
 	log.Printf("Running REST API server on port %d...", *rest_port)
-	cache_server.RunHttpServer(*rest_port)
+	cache_server.RunAndReturnHttpServer(*rest_port)
 }

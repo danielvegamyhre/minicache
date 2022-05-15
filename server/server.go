@@ -61,6 +61,11 @@ type Pair struct {
 	Value	string 	`json:"value"`	
 }
 
+type ServerComponents struct {
+	GrpcServer		*grpc.Server 
+	HttpServer		*http.Server
+}
+
 const (
 	DYNAMIC = "DYNAMIC"
 )
@@ -69,7 +74,7 @@ const (
 // Set node_id param to DYNAMIC to dynamically discover node id. 
 // Otherwise, manually set it to a valid node_id from the config file.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
-func GetNewCacheServer(capacity int, config_file string, verbose bool, node_id string) (*grpc.Server, *CacheServer) {	
+func NewCacheServer(capacity int, config_file string, verbose bool, node_id string) (*grpc.Server, *CacheServer) {	
 	// set up logging
 	sugared_logger := GetSugaredZapLogger(verbose)
 
@@ -161,8 +166,24 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
     c.IndentedJSON(http.StatusCreated, <-result)
 }
 
-func (s *CacheServer) RunHttpServer(port int) {
-	s.router.Run(fmt.Sprintf(":%d", port))
+func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
+	// setup http server
+	addr := fmt.Sprintf(":%d", port)
+	srv := &http.Server{
+	    Addr:    addr,
+        Handler: s.router,
+    }
+
+    // run in background
+    go func() {
+        // service connections
+        if err := srv.ListenAndServe(); err != nil {
+            log.Printf("listen: %s\n", err)
+        }
+    }()
+
+    // return server object so we can shutdown gracefully later
+    return srv
 }
 
 // gRPC handler for getting item from cache. Any replica in the group can serve read requests.
@@ -321,9 +342,12 @@ func (s *CacheServer) RegisterNodeInternal() {
 	}
 }
 
-func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) {
+// Create and run all servers defined in config file and return list of server components
+func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) []ServerComponents {
 	log.Printf("Creating and running all nodes from config file: %s", config_file)
 	config := node.LoadNodesConfig(config_file)
+
+	var components []ServerComponents
 
 	for _, nodeInfo := range config.Nodes {
 		// set up listener TCP connectiion
@@ -333,7 +357,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) {
 		}
 
 		// get new grpc id server
-		grpc_server, cache_server := GetNewCacheServer(capacity, config_file, verbose, nodeInfo.Id)
+		grpc_server, cache_server := NewCacheServer(capacity, config_file, verbose, nodeInfo.Id)
 
 		// run gRPC server
 		log.Printf("Running gRPC server on port %d...", nodeInfo.GrpcPort)
@@ -351,6 +375,9 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) {
 
 		// run HTTP server
 		log.Printf("Running REST API server on port %d...", nodeInfo.RestPort)
-		go cache_server.RunHttpServer(int(nodeInfo.RestPort))
+		http_server := cache_server.RunAndReturnHttpServer(int(nodeInfo.RestPort))
+
+		components = append(components, ServerComponents{GrpcServer: grpc_server, HttpServer: http_server})
 	}
+	return components
 }
