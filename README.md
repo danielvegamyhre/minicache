@@ -2,7 +2,7 @@
 
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
-Distributed cache implemnted in Go. Like Redis but simpler. Features include:
+Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - Client-side [consistent hashing](https://en.wikipedia.org/wiki/Consistent_hashing) to support fault-tolerance by minimizing the number of key re-remappings required in the event of node failure
 - Dynamic node discovery enabling arbitrary cluster sizes
 - Distributed leader election via [Bully algorithm](https://en.wikipedia.org/wiki/Bully_algorithm) and leader heartbeat monitors which ensure no single-point of failure
