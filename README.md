@@ -59,9 +59,9 @@ Distributed cache which supports:
 ---------------
 
 ## Performance
-### LRU Cache implemtation ran directly by a test program: ~4.17 million puts/second
+### 1. LRU Cache implemtation ran directly by a test program: ~4.17 million puts/second
 
-### Distributed cache running locally with storage via gRPC calls over local network: ~17,000 puts/second 
+### 2. Distributed cache running locally with storage via gRPC calls over local network: ~17,000 puts/second 
 
 10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
 
@@ -72,7 +72,7 @@ $ go test -v main_test.go
     main_test.go:115: Cache misses: 0/10,000 (0.000000%)
 ```
 
-### Distributed cache storage running in Docker containers with storage via gRPC calls: 1150 puts/second
+### 3. Distributed cache storage running in Docker containers with storage via gRPC calls: 1150 puts/second
 
 10,000 items stored in cache via gRPC calls in 8.69 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
 
@@ -91,11 +91,11 @@ $ go test -v main_test.go
 
 ## Testing
 
-### Unit tests
+### 1. Unit tests
 - LRU Cache implementation has exhaustive unit tests for correctness in all possible scenarios (see [lru_cache_test.go](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go))
 - Run the unit tests with the command `go test -v ./lru_cache`
 
-### Integration tests
+### 2. Integration tests
 Run the integration tests with the command `go test -v main_test.go`, which performs the following steps:
 
 1. Spins up multiple cache server instances locally on different ports (see [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) config file)
@@ -104,7 +104,7 @@ Run the integration tests with the command `go test -v main_test.go`, which perf
 4. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via gRPC calls
 5. After each test, displays % of cache misses (which in this case, is when the client is simply unable to store an item in the distributed cache)
 
-### Fault-tolerance testing
+### 3. Fault-tolerance testing
 
 A useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time. 
 
