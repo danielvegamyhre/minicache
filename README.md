@@ -4,6 +4,12 @@
 
 This may not be the best distributed cache, but it is a distributed cache.
 
+## Contents 
+
+1. [Features](https://github.com/malwaredllc/minicache#features)
+2. [Testing](https://github.com/malwaredllc/minicache#testing)
+3. [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
+
 <img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
 
 ----------

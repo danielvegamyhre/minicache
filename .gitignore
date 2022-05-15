@@ -19,3 +19,4 @@ minicache
 
 # private keys
 *.pem
+*.srl
