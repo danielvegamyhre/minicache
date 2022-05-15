@@ -58,7 +58,7 @@ Distributed cache which supports:
 
 ```
 $ go test -v main_test.go
-...
+	...
     main_test.go:114: Time to complete 10k puts via gRPC: 588.774872ms
     main_test.go:115: Cache misses: 0/10,000 (0.000000%)
 ```
@@ -66,7 +66,9 @@ $ go test -v main_test.go
 3. **Distributed cache storage running in Docker containers with storage via gRPC calls**: 1150 puts/second (10,000 items stored in cache via gRPC calls in 8.69 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test)
 
 ```
-cache_client_docker_test.go:95: Time to complete 10k puts via REST API: 8.6985474s
+# docker run --network minicache_default cacheclient
+	...
+	cache_client_docker_test.go:95: Time to complete 10k puts via REST API: 8.6985474s
 ``` 
 
 ### Test environment:
@@ -91,7 +93,25 @@ Run the integration tests with the command `go test -v main_test.go`, which perf
 4. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via gRPC calls
 5. After each test, displays % of cache misses (which in this case, is when the client is simply unable to store an item in the distributed cache)
 
-**PRO TIP**: a useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time.
+### Fault-tolerance testing
+
+A useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time. 
+
+
+Example of stopping and restarting cacheserver1 while integration tests are running:
+
+```
+2022/05/15 02:23:35 cluster config: [id:"node2" host:"cacheserver2" rest_port:8080 grpc_port:5005 id:"epQKE" host:"cacheserver3" rest_port:8080 grpc_port:5005 id:"node0" host:"cacheserver0" rest_port:8080 grpc_port:5005]
+...
+2022/05/15 02:23:35 Removing node node1 from ring
+...
+2022/05/15 02:23:36 cluster config: [id:"epQKE" host:"cacheserver3" rest_port:8080 grpc_port:5005 id:"node0" host:"cacheserver0" rest_port:8080 grpc_port:5005 id:"node2" host:"cacheserver2" rest_port:8080 grpc_port:5005]
+...
+
+2022/05/15 02:23:40 Adding node node1 to ring
+...
+2022/05/15 02:23:41 cluster config: [id:"node2" host:"cacheserver2" rest_port:8080 grpc_port:5005 id:"epQKE" host:"cacheserver3" rest_port:8080 grpc_port:5005 id:"node0" host:"cacheserver0" rest_port:8080 grpc_port:5005 id:"node1" host:"cacheserver1" rest_port:8080 grpc_port:5005]
+```
 
 -------------
 
