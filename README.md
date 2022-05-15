@@ -141,7 +141,7 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 
 -------------
 
-## Usage
+## Set Up and Usage
 
 ### 1. Define initial nodes
 
@@ -163,6 +163,10 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 
 - Run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). 
 
+### 3. Run cache servers and clients by following any of the examples below
+
+--------------
+## Examples
 
 ### Example 1: Run Distributed Cache Using Docker Containers
 
@@ -180,13 +184,15 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 
 ### Example 2: Starting All Cache Servers Defined in Config File
 
-**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
+In the example below:
+- `RELATIVE_CERT_DIR` is the directory containing TLS certificates you generated [here](https://github.com/malwaredllc/minicache#set-up-and-usage)
+- `RELATIVE_CONFIG_PATH` is the path to the JSON config file containing the initial node information, discussed [here](https://github.com/malwaredllc/minicache#set-up-and-usage)
 
 ```go
 	// start servers
 	capacity := 100
 	verbose := false
-	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
+	abs_cert_dir, _ := filepath.Abs(RELATIVE_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
 	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
@@ -207,8 +213,6 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 ```
 
 ### Example 3: Starting a Single Cache Server
-
-**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
 ```go
 func main() {
@@ -274,6 +278,10 @@ func main() {
 ### Example 4: Creating and Using a Cache Client
 
 **NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
+
+In the example below:
+- `abs_cert_dir` is the directory containing TLS certificates you generated [here](https://github.com/malwaredllc/minicache#set-up-and-usage)
+- `abs_config_path` is the path to the JSON config file containing the initial node information, discussed [here](https://github.com/malwaredllc/minicache#set-up-and-usage)
 
 ```go
 	// start client
