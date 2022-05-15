@@ -55,7 +55,8 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - Follower nodes monitor heartbeat of leader and run a new election if it goes down
 
 ### Dynamic node discovery
-- New nodes join the cluster when they come online by first registering themselves with the cluster, which is done by sending identifying information (hostname, port, etc.) to each of the cluster's original "genesis" nodes (i.e. nodes defined in the config file used at runtime) until one returns a successful response. When an existing node receives this registration request from the new node, it will add the new node to its in-memory list of nodes and send this updated list to all other nodes.
+- New nodes join the cluster when they come online by first registering themselves with the cluster, which is done by sending identifying information (hostname, port, etc.) to each of the cluster's original "genesis" nodes (i.e. nodes defined in the config file used at runtime) until one returns a successful response. 
+- When an existing node receives this registration request from the new node, it will add the new node to its in-memory list of nodes and send this updated list to all other nodes.
 - The leader node monitors heartbeats of all nodes in the cluster, keeping a list of active reachable nodes in the cluster updated in real-time.
 - Clients monitor the leader's cluster config for changes and updates their consistent hashing ring accordingly. Time to update cluster state after node joins/leaves cluster is <= 1 second.
 
