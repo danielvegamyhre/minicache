@@ -30,6 +30,7 @@ type Payload struct {
 type ClientWrapper struct {
 	Config 		nodelib.NodesConfig
 	Ring		*ring.Ring
+	CertDir 	string
 }
 
 // Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
@@ -53,7 +54,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				attempted[randnode.Id] = true
 
 				// skip node we can't connect to
-				client, err := NewCacheClient(randnode.Host, int(randnode.GrpcPort))
+				client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort))
 				if err != nil {
 					continue
 				}
@@ -81,7 +82,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 			defer cancel()
 
 			// restart process if we can't connect to leader
-			client, err := NewCacheClient(leader.Host, int(leader.GrpcPort))
+			client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort))
 			if err != nil {
 				continue
 			}
@@ -125,14 +126,14 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 }
 
 // Create new Client struct instance and sets up node ring with consistent hashing
-func NewClientWrapper(config_file string) *ClientWrapper {
+func NewClientWrapper(cert_dir string, config_file string) *ClientWrapper {
 	// get initial nodes from config file and add them to the ring
 	init_nodes_config := nodelib.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
 	var cluster_config []*pb.Node
 
 	for _, node := range init_nodes_config.Nodes {
-		c, err := NewCacheClient(node.Host, int(node.GrpcPort))
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort))
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
@@ -164,7 +165,7 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 
 		// attempt to create client
-		c, err := NewCacheClient(node.Host, int(node.GrpcPort))
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort))
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
@@ -172,13 +173,13 @@ func NewClientWrapper(config_file string) *ClientWrapper {
 		config_map[node.Id].SetGrpcClient(c)
 	}
 	config := nodelib.NodesConfig{Nodes: config_map}
-	return &ClientWrapper{Config: config, Ring: ring}
+	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
+func NewCacheClient(cert_dir string, server_host string, server_port int) (pb.CacheServiceClient, error) {
 	// set up TLS
-	creds, err := LoadTLSCredentials()
+	creds, err := LoadTLSCredentials(cert_dir)
 	if err != nil {
 		log.Fatalf("failed to create credentials: %v", err)
 	}
@@ -248,7 +249,9 @@ func (c *ClientWrapper) Put(key string, value string) error {
 	}
 
 	// check response
-	_, err = new(http.Client).Do(req)
+	res, err := new(http.Client).Do(req)
+	defer res.Body.Close()
+	
 	if err != nil {
 		return errors.New(fmt.Sprintf("error sending POST request: %s", err))
 	}
@@ -262,7 +265,7 @@ func (c *ClientWrapper) GetGrpc(key string) (string, error) {
 
 	// make new client if necessary
 	if nodeInfo.GrpcClient == nil {
-		c, err := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		c, err := NewCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort))
 		if err != nil {
 			return "", errors.New(fmt.Sprintf("error making gRPC client: %s", err))
 		}
@@ -288,7 +291,7 @@ func (c *ClientWrapper) PutGrpc(key string, value string) error {
 
 	// make new client if necessary
 	if nodeInfo.GrpcClient == nil {
-		c, err := NewCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		c, err := NewCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort))
 		if err != nil {
 			return errors.New(fmt.Sprintf("error making gRPC client: %s", err))
 		}
@@ -308,9 +311,9 @@ func (c *ClientWrapper) PutGrpc(key string, value string) error {
 }
 
 // Utility function to set up mTLS config and credentials
-func LoadTLSCredentials() (credentials.TransportCredentials, error) {
+func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed server's certificate
-	pemServerCA, err := ioutil.ReadFile("../../certs/ca-cert.pem")
+	pemServerCA, err := ioutil.ReadFile(fmt.Sprintf("%s/ca-cert.pem", cert_dir))
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +324,10 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 	}
 
 	// Load client's certificate and private key
-	clientCert, err := tls.LoadX509KeyPair("../../certs/client-cert.pem", "../../certs/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair(
+		fmt.Sprintf("%s/client-cert.pem", cert_dir), 
+		fmt.Sprintf("%s/client-key.pem", cert_dir),
+	)
 	if err != nil {
 		return nil, err
 	}
