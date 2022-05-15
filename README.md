@@ -4,11 +4,10 @@
 
 This may not be the best distributed cache, but it is a distributed cache.
 
-Features:
-
-### LRU eviction policy with O(1) operations
+### Thread-safe LRU cache with O(1) operations
 - Least-recently-used eviction policy with a configurable cache capacity ensures low cache-miss rate
 - Get/Put operations and eviction run all run in **O(1) time**
+- LRU cache implementation is thread safe
 
 ### Consistent Hashing
 - Client uses **consistent hashing** to uniformly distribute requests and minimize required re-mappings when servers join/leave the cluster
@@ -21,3 +20,7 @@ Features:
 
 ### No single point of failure
 - The distributed election algorithm allows any nodes to arbitrarily join/leave cluster at any time, and there is always guaranteed to be a leader tracking the state of nodes in the cluster to provide to clients for consistent hashing.
+
+------------
+
+## Example Usage 
