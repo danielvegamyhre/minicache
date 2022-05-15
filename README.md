@@ -10,6 +10,9 @@ Distributed cache which supports:
 - mTLS secured communication (gRPC only for now, adding to HTTP/REST API soon)
 - Dockerfiles to support containerized deployments
 
+
+<img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
+
 ## Contents 
 
 - [Features](https://github.com/malwaredllc/minicache#features)
@@ -33,8 +36,6 @@ Distributed cache which supports:
 	- [Running a single cache server](https://github.com/malwaredllc/minicache#usage-example-2-starting-a-single-cache-server)
 	- [Running all cache servers defined in a config file](https://github.com/malwaredllc/minicache#usage-example-3-starting-all-cache-servers-defined-in-config-file)
 	- [Creating and using a cache client](https://github.com/malwaredllc/minicache#usage-example-4-creating-and-using-a-cache-client)
-
-<img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
 
 ----------
 
