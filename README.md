@@ -4,7 +4,7 @@
 
 This may not be the best distributed cache, but it is a distributed cache.
 
-<img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=400>
+<img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
 
 ----------
 
@@ -48,18 +48,16 @@ Run the integration tests with the command `go test -v main_test.go`, which perf
 2. Creates cache client
 3. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via REST API endpoint
 4. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via gRPC calls
-5. After each test, displays % of cache misses.
+5. After each test, displays % of cache misses (which in this case, is when the client is simply unable to store an item in the distributed cache)
 
 **PRO TIP**: a useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time.
 
 -------------
-## Examples
 
-### Example 1: Docker Containers
+## Example: Run Distributed Cache Using Docker Containers
 1. Run `docker-compose build` from the project root directory to build the Docker images
 2. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
 3. Run `docker build -t cacheclient -f Dockerfile.client .` from the project root directory to build a Docker image for the client.
 4. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
 
-### Example 2: Localhost
 
