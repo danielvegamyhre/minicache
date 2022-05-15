@@ -139,27 +139,63 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 
 -------------
 
-## Usage Example: Run Distributed Cache Using Docker Containers
+## Usage
+
+Before using minicache you will need to generate TLS certificates by performing the following steps:
 
 1. **Generate TLS certificates**: update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running, then run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`.
 
-By default, the following hostnames and IPs are defined in the config files:
+By default, the following hostnames and IPs are defined in the config files (note the hostnames match those defined in `docker-compose.yml`):
 
 ```
 subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver2,DNS:cacheserver3,IP:0.0.0.0,IP:127.0.0.1
 ```
 
-2. Run `docker-compose build` from the project root directory to build the Docker images.
+## Example 1: Run Distributed Cache Using Docker Containers
 
-3. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
+**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
-4. Run `docker build -t cacheclient -f Dockerfile.client .` from the project root directory to build a Docker image for the client.
+1. Run `docker-compose build` from the project root directory to build the Docker images.
 
-5. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
+2. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
+
+3. Run `docker build -t cacheclient -f Dockerfile.client .` from the project root directory to build a Docker image for the client.
+
+4. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
 
 **PRO TIP**: a useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time.
 
-## Usage Example 2: Starting a Single Cache Server
+## Example 2: Starting All Cache Servers Defined in Config File
+
+**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
+
+```go
+	// start servers
+	capacity := 100
+	verbose := false
+	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
+	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
+	
+	...
+
+	// cleanup
+	for _, srv_comps := range components {
+		srv_comps.GrpcServer.Stop()
+
+	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	    defer cancel()
+
+	    if err := srv_comps.HttpServer.Shutdown(ctx); err != nil {
+	        t.Logf("Http server shutdown error: %s", err)
+	    }
+	}
+```
+
+## Example 3: Starting a Single Cache Server
+
+**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
 ```go
 func main() {
@@ -223,33 +259,9 @@ func main() {
 }
 ```
 
-## Usage Example 3: Starting All Cache Servers Defined in Config File
+## Example 4: Creating and Using a Cache Client
 
-```go
-	// start servers
-	capacity := 100
-	verbose := false
-	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
-	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
-
-	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
-	
-	...
-
-	// cleanup
-	for _, srv_comps := range components {
-		srv_comps.GrpcServer.Stop()
-
-	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	    defer cancel()
-
-	    if err := srv_comps.HttpServer.Shutdown(ctx); err != nil {
-	        t.Logf("Http server shutdown error: %s", err)
-	    }
-	}
-```
-
-## Usage Example 4: Creating and Using a Cache Client
+**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
 ```go
 	// start client
