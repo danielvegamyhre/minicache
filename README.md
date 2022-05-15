@@ -2,12 +2,12 @@
 
 ![build badge](https://github.com/malwaredllc/minicache/actions/workflows/go.yml/badge.svg)
 
-Distributed cache which supports:
+Distributed cache implemnted in Go. Like Redis but simpler. Features include:
 - Client-side [consistent hashing](https://en.wikipedia.org/wiki/Consistent_hashing) to support fault-tolerance by minimizing the number of key re-remappings required in the event of node failure
-- Arbitrary cluster sizes with dynamic node discovery
-- Distributed leader election algorithm and leader heartbeat monitors which ensure no single-point of failure
+- Dynamic node discovery enabling arbitrary cluster sizes
+- Distributed leader election via [Bully algorithm](https://en.wikipedia.org/wiki/Bully_algorithm) and leader heartbeat monitors which ensure no single-point of failure
 - Both HTTP/gRPC interfaces for gets/puts
-- mTLS secured communication (gRPC only for now, adding to HTTP/REST API soon)
+- [mTLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/) secured communication (gRPC only for now, adding to HTTP/REST API soon)
 - Dockerfiles to support containerized deployments
 
 
