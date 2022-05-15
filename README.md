@@ -143,13 +143,15 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 
 Before using minicache you will need to generate TLS certificates by performing the following steps:
 
-1. **Generate TLS certificates**: update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running, then run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`.
-
-By default, the following hostnames and IPs are defined in the config files (note the hostnames match those defined in `docker-compose.yml`):
+1. Update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running. If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`. By default, the following hostnames and IPs are defined in the config files (note the hostnames match those defined in `docker-compose.yml`):
 
 ```
 subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver2,DNS:cacheserver3,IP:0.0.0.0,IP:127.0.0.1
 ```
+
+2. Run `./gen.sh` which will generate the TLS certificates and store them in the appropriate location (`/certs`). 
+
+
 
 ## Example 1: Run Distributed Cache Using Docker Containers
 
@@ -243,14 +245,13 @@ func main() {
 		log.Printf("Shutting down gRPC server...")
 		grpc_server.Stop()
 
-
 		log.Printf("Shutting down HTTP server...")
-	    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	    defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
 
-	    if err := http_server.Shutdown(ctx); err != nil {
-	        log.Printf("Http server shutdown error: %s", err)
-	    }
+		if err := http_server.Shutdown(ctx); err != nil {
+			log.Printf("Http server shutdown error: %s", err)
+		}
 		os.Exit(0)
 	}()
 
