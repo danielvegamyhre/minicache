@@ -32,10 +32,10 @@ Distributed cache which supports:
 	- [Integration testing](https://github.com/malwaredllc/minicache#2-integration-tests)
 	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go)
 - [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
-	- [Running a distributed cache with Docker Compose](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
-	- [Running a single cache server](https://github.com/malwaredllc/minicache#usage-example-2-starting-a-single-cache-server)
-	- [Running all cache servers defined in a config file](https://github.com/malwaredllc/minicache#usage-example-3-starting-all-cache-servers-defined-in-config-file)
-	- [Creating and using a cache client](https://github.com/malwaredllc/minicache#usage-example-4-creating-and-using-a-cache-client)
+	- [Running a distributed cache with Docker Compose](https://github.com/malwaredllc/minicache#example-1-run-distributed-cache-using-docker-containers)
+	- [Running all cache servers defined in a config file](https://github.com/malwaredllc/minicache#example-2-starting-all-cache-servers-defined-in-config-file)
+	- [Running a single cache server](https://github.com/malwaredllc/minicache#example-3-starting-a-single-cache-server)
+	- [Creating and using a cache client](https://github.com/malwaredllc/minicache#example-4-creating-and-using-a-cache-client)
 
 ----------
 
