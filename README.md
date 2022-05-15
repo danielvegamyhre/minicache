@@ -13,8 +13,9 @@ Distributed cache which supports:
 ## Contents 
 
 1. [Features](https://github.com/malwaredllc/minicache#features)
-2. [Testing](https://github.com/malwaredllc/minicache#testing)
-3. [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
+2. [Performance](https://github.com/malwaredllc/minicache#performance)
+3. [Testing](https://github.com/malwaredllc/minicache#testing)
+4. [Usage/Examples](https://github.com/malwaredllc/minicache#usage-example-run-distributed-cache-using-docker-containers)
 
 <img src="https://github.com/malwaredllc/minicache/blob/main/docs/consistent_hashing_ring.png" width=600>
 
@@ -48,8 +49,12 @@ Distributed cache which supports:
 ### mTLS for maximum security
 - minicache uses [mutual TLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/), with mutual authentication between client and server for maximum security.
 
-### Performance
-- 10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test:
+---------------
+
+## Performance
+- **LRU Cache implemtation ran directly by a test program**: ~4.17 million puts/second
+
+- **Distributed cache storage via gRPC calls over local network**: ~17,000 puts/second (10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test):
 
 ```
 $ go test -v main_test.go
@@ -106,6 +111,78 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 5. Run `docker run --network minicache_default cacheclient` to run the client in a docker container connected t to the docker compose network the servers are running on. By default, the Dockerfile simply builds the client and runs the integration tests described above, although you can change it to do whatever you want.
 
 **PRO TIP**: a useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time.
+
+## Usage Example 2: Starting a Single Cache Server
+
+```go
+func main() {
+	// parse arguments
+	grpc_port := flag.Int("grpc-port", 5005, "port number for gRPC server to listen on")
+	capacity := flag.Int("capacity", 2, "capacity of LRU cache")
+	verbose := flag.Bool("verbose", false, "log events to terminal")
+	config_file := flag.String("config", "", "filename of JSON config file with node info")
+	rest_port := flag.Int("rest-port", 8080, "enable REST API for client requests, instead of just gRPC")
+
+	flag.Parse()
+
+	// set up listener TCP connectiion
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpc_port))
+	if err != nil {
+		panic(err)
+	}
+
+	// get new grpc id server
+	grpc_server, cache_server := server.NewCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC)
+
+	// run gRPC server
+	log.Printf("Running gRPC server on port %d...", *grpc_port)
+	go grpc_server.Serve(listener)
+
+	// register node with cluster
+	cache_server.RegisterNodeInternal()
+
+	// run initial election
+	cache_server.RunElection()
+
+	// start leader heartbeat monitor
+	go cache_server.StartLeaderHeartbeatMonitor()
+
+
+	// run HTTP server
+	log.Printf("Running REST API server on port %d...", *rest_port)
+	cache_server.RunAndReturnHttpServer(*rest_port)
+}
+```
+
+## Usage Example 3: Starting All Cache Servers Defined in Config File
+
+```go
+	// start servers
+	capacity := 100
+	verbose := false
+	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
+	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose)
+	...
+```
+
+## Usage Example 4: Creating and Using a Cache Client
+
+```go
+	// start client
+	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path)
+	c.StartClusterConfigWatcher()
+
+	...
+
+	c.Put(key, value)
+
+	...
+
+	val := c.Get(key)
+	
+```
 
 ---------------
 
