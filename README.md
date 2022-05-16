@@ -297,7 +297,9 @@ In the example below:
 ---------------
 
 ## To Do
-- TLS for REST API
+- Make using TLS optional
+- TLS support for REST API
+- Move to Raft election algorithm instead of Bully algorithm
 - Improve performance of REST API
 - Improve code quality and project organization
 - Documentation
