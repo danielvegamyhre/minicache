@@ -37,6 +37,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 	- [Running all cache servers defined in a config file](https://github.com/malwaredllc/minicache#example-2-starting-all-cache-servers-defined-in-config-file)
 	- [Running a single cache server](https://github.com/malwaredllc/minicache#example-3-starting-a-single-cache-server)
 	- [Creating and using a cache client](https://github.com/malwaredllc/minicache#example-4-creating-and-using-a-cache-client)
+- [Contributing](https://github.com/malwaredllc/minicache#contributing)
 
 ----------
 
@@ -296,7 +297,10 @@ In the example below:
 
 ---------------
 
-## To Do
+## Contributing
+Feel free to take a look at some of the issues and feature requests [here](https://github.com/malwaredllc/minicache/issues) and submit a pull-request.
+
+
 - Make using TLS optional
 - TLS support for REST API
 - Move to Raft election algorithm instead of Bully algorithm
