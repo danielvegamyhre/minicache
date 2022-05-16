@@ -23,9 +23,9 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 	- [Support for both HTTP/gRPC](https://github.com/malwaredllc/minicache#supports-both-rest-api-and-grpc)
 	- [mTLS for maximum security](https://github.com/malwaredllc/minicache#mtls-for-maximum-security)
 - [Performance/Benchmarking](https://github.com/malwaredllc/minicache#performance)
-	- [LRU Cache direct usage performance](https://github.com/malwaredllc/minicache#1-lru-cache-implemtation-ran-directly-by-a-test-program-417-million-putssecond)
-	- [Local distributed cache performance](https://github.com/malwaredllc/minicache#2-distributed-cache-running-locally-with-storage-via-grpc-calls-over-local-network-17000-putssecond)
-	- [Distributed cache ran in Docker containers](https://github.com/malwaredllc/minicache#3-distributed-cache-storage-running-in-docker-containers-with-storage-via-grpc-calls-1150-putssecond)
+	- [LRU Cache direct usage performance](https://github.com/malwaredllc/minicache#1-lru-cache-implemtation-ran-directly-by-a-test-program)
+	- [Local distributed cache performance](https://github.com/malwaredllc/minicache#2-distributed-cache-running-locally-with-storage-via-grpc-calls-over-local-network)
+	- [Distributed cache ran in Docker containers](https://github.com/malwaredllc/minicache#3-distributed-cache-storage-running-in-docker-containers-with-storage-via-grpc-calls)
 
 - [Testing](https://github.com/malwaredllc/minicache#testing)
 	- [Unit testing](https://github.com/malwaredllc/minicache#1-unit-tests)
@@ -80,36 +80,36 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - **Processor**: 2.4 GHz Intel Core i5
 - **Memory**: 8 GB 1600 MHz DDR3 
 
-### 1. LRU Cache implemtation ran directly by a test program: 
+### 1. LRU Cache implementation ran directly by a test program: 
+
+**Test**: 10 million puts calling a LRU cache with capacity of 10,000 directly in memory:
 
 ```
 $ go test -v ./lru_cache
 
-    lru_cache_test.go:19: Time to complete 10M puts: 3.519145813s
-    lru_cache_test.go:20: LRU Cache write throughput: 2841598.652451 puts/second
+=== RUN   TestCacheWriteThroughput
+    lru_cache_test.go:19: Time to complete 10M puts: 3.869112083s
+    lru_cache_test.go:20: LRU Cache write throughput: 2584572.321887 puts/second
 
 ```
-**2.84** million puts/second
+**Result**: 2.58 million puts/second
 
 ### 2. Distributed cache running locally with storage via gRPC calls over local network
 
-**~17,000 puts/second**
-
-10,000 items stored in cache via gRPC calls in 0.588 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
+**Test**: 10,000 items stored in cache via gRPC calls when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
 
 ```
 $ go test -v main_test.go
 	...
     main_test.go:114: Time to complete 10k puts via gRPC: 588.774872ms
-    main_test.go:115: Cache misses: 0/10,000 (0.000000%)
 ```
+
+**Result**: ~17,000 puts/second
 
 ### 3. Distributed cache storage running in Docker containers with storage via gRPC calls: 
 
 
-**1150 puts/second**
-
-10,000 items stored in cache via gRPC calls in 8.69 seconds when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
+**Test**: 10,000 items stored in cache via gRPC calls when running 4 cache servers on localhost with capacity of 100 items each, when all servers stay online throughout the test
 
 ```
 # docker run --network minicache_default cacheclient
@@ -117,6 +117,7 @@ $ go test -v main_test.go
 	cache_client_docker_test.go:95: Time to complete 10k puts via REST API: 8.6985474s
 ``` 
 
+**Result**: 1150 puts/second
 
 ------------
 

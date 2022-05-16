@@ -7,7 +7,7 @@ import (
 )
 
 func TestCacheWriteThroughput(t *testing.T) {
-	capacity := 100
+	capacity := 10000
 	num_puts := 10000000
 	lru := NewLruCache(capacity)
 	start := time.Now()
