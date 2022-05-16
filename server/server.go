@@ -170,21 +170,23 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
 	// setup http server
 	addr := fmt.Sprintf(":%d", port)
+	tlsConfig, _ := LoadTlsConfig()
 	srv := &http.Server{
-	    Addr:    addr,
-        Handler: s.router,
-    }
+		Addr:      addr,
+		Handler:   s.router,
+		TLSConfig: tlsConfig,
+	}
 
-    // run in background
-    go func() {
-        // service connections
-        if err := srv.ListenAndServe(); err != nil {
-            log.Printf("listen: %s\n", err)
-        }
-    }()
+	// run in background
+	go func() {
+		// service connections
+		if err := srv.ListenAndServeTLS("certs/server-cert.pem", "certs/server-key.pem"); err != nil {
+			log.Printf("listen: %s\n", err)
+		}
+	}()
 
-    // return server object so we can shutdown gracefully later
-    return srv
+	// return server object so we can shutdown gracefully later
+	return srv
 }
 
 // gRPC handler for getting item from cache. Any replica in the group can serve read requests.
@@ -202,8 +204,8 @@ func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty
 	return &empty.Empty{}, nil	
 }
 
-// Set up mutual TLS config and credentials
-func LoadTLSCredentials() (credentials.TransportCredentials, error) {
+//Set up mutual TLS config
+func LoadTlsConfig() (*tls.Config, error) {
 	// Load certificate of the CA who signed client's certificate
 	pemClientCA, err := ioutil.ReadFile("certs/ca-cert.pem")
 	if err != nil {
@@ -226,9 +228,19 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 		Certificates: []tls.Certificate{serverCert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    certPool,
-		RootCAs:	  certPool,
+		RootCAs:      certPool,
 	}
 
+	return config, nil
+
+}
+
+// Set up mutual TLS config and credentials
+func LoadTLSCredentials() (credentials.TransportCredentials, error) {
+	config, err := LoadTlsConfig()
+	if err != nil {
+		return nil, err
+	}
 	return credentials.NewTLS(config), nil
 }
 
