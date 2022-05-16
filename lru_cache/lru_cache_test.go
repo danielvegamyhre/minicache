@@ -2,9 +2,25 @@ package lru_cache
 
 import (
 	"testing"
+	"strconv"
+	"time"
 )
 
-func TestCache1(t *testing.T) {
+func TestCacheWriteThroughput(t *testing.T) {
+	capacity := 100
+	num_puts := 10000000
+	lru := NewLruCache(capacity)
+	start := time.Now()
+	for i := 0; i < num_puts; i++ {
+		v := strconv.Itoa(i)
+		lru.Put(v, v)
+	}
+	elapsed := time.Since(start)
+	t.Logf("Time to complete 10M puts: %s", elapsed)
+	t.Logf("LRU Cache write throughput: %f puts/second", float64(num_puts)/elapsed.Seconds())
+}
+
+func TestCacheAllScenarios(t *testing.T) {
 	// new LRU cache with capacity of 2
 	capacity := 2
 	lru := NewLruCache(capacity)
