@@ -42,17 +42,18 @@ const (
 )
 
 type CacheServer struct {
-	router				*gin.Engine
-	cache				*lru_cache.LruCache
-	logger 				*zap.SugaredLogger 
-	nodes_config 		node.NodesConfig
-	leader_id 			string
-	node_id 			string
-	group_id			string
-	shutdown_chan 		chan bool
-	decision_chan		chan string
-	mutex 				sync.RWMutex
-	election_status 	bool
+	router          *gin.Engine
+	cache           *lru_cache.LruCache
+	logger          *zap.SugaredLogger
+	nodes_config    node.NodesConfig
+	leader_id       string
+	node_id         string
+	group_id        string
+	client_auth     bool
+	shutdown_chan   chan bool
+	decision_chan   chan string
+	mutex           sync.RWMutex
+	election_status bool
 	pb.UnimplementedCacheServiceServer
 }
 
@@ -74,7 +75,7 @@ const (
 // Set node_id param to DYNAMIC to dynamically discover node id. 
 // Otherwise, manually set it to a valid node_id from the config file.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
-func NewCacheServer(capacity int, config_file string, verbose bool, node_id string) (*grpc.Server, *CacheServer) {	
+func NewCacheServer(capacity int, config_file string, verbose bool, node_id string, client_auth bool) (*grpc.Server, *CacheServer) {
 	// set up logging
 	sugared_logger := GetSugaredZapLogger(verbose)
 
@@ -111,20 +112,21 @@ func NewCacheServer(capacity int, config_file string, verbose bool, node_id stri
 
 	// create server instance
 	cache_server := CacheServer{
-		router:				router,
-		cache:				&lru,	
-		logger: 			sugared_logger,
-		nodes_config: 	 	nodes_config,
-		node_id: 			final_node_id,
-		leader_id: 			NO_LEADER,
-		decision_chan:		make(chan string, 1),
+		router:        router,
+		cache:         &lru,
+		logger:        sugared_logger,
+		nodes_config:  nodes_config,
+		node_id:       final_node_id,
+		leader_id:     NO_LEADER,
+		client_auth:   client_auth,
+		decision_chan: make(chan string, 1),
 	}
 
 	cache_server.router.GET("/get/:key", cache_server.GetHandler)
 	cache_server.router.POST("/put", cache_server.PutHandler)
 
 	// set up TLS
-	creds, err := LoadTLSCredentials()
+	creds, err := LoadTLSCredentials(client_auth)
 	if err != nil {
 		cache_server.logger.Fatalf("failed to create credentials: %v", err)
 	}
@@ -170,7 +172,7 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
 	// setup http server
 	addr := fmt.Sprintf(":%d", port)
-	tlsConfig, _ := LoadTlsConfig()
+	tlsConfig, _ := LoadTlsConfig(s.client_auth)
 	srv := &http.Server{
 		Addr:      addr,
 		Handler:   s.router,
@@ -205,7 +207,7 @@ func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty
 }
 
 //Set up mutual TLS config
-func LoadTlsConfig() (*tls.Config, error) {
+func LoadTlsConfig(client_auth bool) (*tls.Config, error) {
 	// Load certificate of the CA who signed client's certificate
 	pemClientCA, err := ioutil.ReadFile("certs/ca-cert.pem")
 	if err != nil {
@@ -223,10 +225,17 @@ func LoadTlsConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
+	var clientAuth tls.ClientAuthType
+	if client_auth {
+		clientAuth = tls.RequireAndVerifyClientCert
+	} else {
+		clientAuth = tls.NoClientCert
+	}
+
 	// Create the credentials and return it
 	config := &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth:   clientAuth,
 		ClientCAs:    certPool,
 		RootCAs:      certPool,
 	}
@@ -236,8 +245,8 @@ func LoadTlsConfig() (*tls.Config, error) {
 }
 
 // Set up mutual TLS config and credentials
-func LoadTLSCredentials() (credentials.TransportCredentials, error) {
-	config, err := LoadTlsConfig()
+func LoadTLSCredentials(client_auth bool) (credentials.TransportCredentials, error) {
+	config, err := LoadTlsConfig(client_auth)
 	if err != nil {
 		return nil, err
 	}
@@ -268,9 +277,9 @@ func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
 }
 
 // New gRPC client for a server node
-func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
+func NewGrpcClientForNode(node *node.Node, client_auth bool) pb.CacheServiceClient {
 	// set up TLS
-	creds, err := LoadTLSCredentials()
+	creds, err := LoadTLSCredentials(client_auth)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create credentials: %v", err))
 	}
@@ -288,7 +297,7 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
 func (s *CacheServer) NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
 	// set up TLS
-	creds, err := LoadTLSCredentials()
+	creds, err := LoadTLSCredentials(s.client_auth)
 	if err != nil {
 		s.logger.Fatalf("failed to create credentials: %v", err)
 	}
@@ -370,7 +379,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) [
 		}
 
 		// get new grpc id server
-		grpc_server, cache_server := NewCacheServer(capacity, config_file, verbose, nodeInfo.Id)
+		grpc_server, cache_server := NewCacheServer(capacity, config_file, verbose, nodeInfo.Id, config.EnableClientAuth)
 
 		// run gRPC server
 		log.Printf("Running gRPC server on port %d...", nodeInfo.GrpcPort)

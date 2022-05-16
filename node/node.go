@@ -17,6 +17,7 @@ import (
 // NodesConfig struct holds info about all server nodes in the network
 type NodesConfig struct {
 	Nodes 	map[string]*Node 	`json:"nodes"`
+	EnableClientAuth bool             `json:"client_auth"`
 }
 
 // Node struct contains all info we need about a server node, as well as 
