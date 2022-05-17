@@ -49,7 +49,6 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 					log.Fatalf("error: unable to connect to any nodes")
 				}
 
-
 				// skip attempted nodes
 				if _, ok := attempted[randnode.Id]; ok {
 					log.Printf("Skipping visited node %s...", randnode.Id)
@@ -62,6 +61,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				// skip node we can't connect to
 				client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
 				if err != nil {
+					log.Printf("NewCacheClient failed %s...", err)
 					continue
 				}
 
@@ -70,6 +70,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 
 				res, err := client.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
 				if err != nil {
+					log.Printf("GetLeader failed %s...", err)
 					continue
 				}
 
@@ -138,7 +139,7 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 	var cluster_config []*pb.Node
 
 	for _, node := range init_nodes_config.Nodes {
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), insecure)
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), !insecure)
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
@@ -170,19 +171,19 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 
 		// attempt to create client
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), insecure)
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), !insecure)
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
 		}
 		config_map[node.Id].SetGrpcClient(c)
 	}
-	config := nodelib.NodesConfig{Nodes: config_map, EnableHttps: init_nodes_config.EnableHttps, EnableClientAuth: init_nodes_config.EnableClientAuth}
+	config := nodelib.NodesConfig{Nodes: config_map, EnableHttps: !insecure, EnableClientAuth: init_nodes_config.EnableClientAuth && !insecure}
 	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(cert_dir string, server_host string, server_port int, insecure bool) (pb.CacheServiceClient, error) {
+func NewCacheClient(cert_dir string, server_host string, server_port int, enable_https bool) (pb.CacheServiceClient, error) {
 
 	var kacp = keepalive.ClientParameters{
 		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
@@ -192,7 +193,7 @@ func NewCacheClient(cert_dir string, server_host string, server_port int, insecu
 
 	tlsConnectionOption := grpc.WithInsecure()
 
-	if !insecure {
+	if enable_https {
 		// set up TLS
 		creds, err := LoadTLSCredentials(cert_dir)
 		if err != nil {
