@@ -56,7 +56,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	}
 	wg.Wait()
 	elapsed := time.Since(start)
-	t.Logf("Time to complete 10k puts via gRPC: %s", elapsed)
+	t.Logf("Time to complete 10k puts via REST: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 
 	// cleanup
@@ -110,7 +110,7 @@ func Test10kConcurrentRestApiPutsInsecure(t *testing.T) {
 	}
 	wg.Wait()
 	elapsed := time.Since(start)
-	t.Logf("Time to complete 10k puts via gRPC: %s", elapsed)
+	t.Logf("Time to complete 10k puts via REST: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 
 	// cleanup
@@ -163,7 +163,7 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	}
 	wg.Wait()
 	elapsed := time.Since(start)
-	t.Logf("Time to complete 10k puts via REST API: %s", elapsed)
+	t.Logf("Time to complete 10k puts via gRPC API: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 
 	// cleanup
