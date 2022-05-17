@@ -44,6 +44,12 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 			for {
 				randnode := nodelib.GetRandomNode(c.Ring.Nodes)
 
+				// if all nodes are unavailable, throw error
+				if len(attempted) == len(c.Ring.Nodes) {
+					log.Fatalf("error: unable to connect to any nodes")
+				}
+
+
 				// skip attempted nodes
 				if _, ok := attempted[randnode.Id]; ok {
 					log.Printf("Skipping visited node %s...", randnode.Id)
