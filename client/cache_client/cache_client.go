@@ -34,101 +34,110 @@ type ClientWrapper struct {
 }
 
 // Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
-func (c *ClientWrapper) StartClusterConfigWatcher() {
+func (c *ClientWrapper) StartClusterConfigWatcher(shutdown_chan <-chan bool) {
 	go func() {
+		// get cluster config every 1 second until shutdown signal received
 		for {
-			// ask random nodes who the leader until we get a response.
-			// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
-			var leader *nodelib.Node
-			attempted := make(map[string]bool)
-			for {
-				randnode := nodelib.GetRandomNode(c.Ring.Nodes)
-
-				// if all nodes are unavailable, throw error
-				if len(attempted) == len(c.Ring.Nodes) {
-					log.Fatalf("error: unable to connect to any nodes")
-				}
-
-				// skip attempted nodes
-				if _, ok := attempted[randnode.Id]; ok {
-					log.Printf("Skipping visited node %s...", randnode.Id)
-					continue
-				}
-
-				// mark visited and request leader
-				attempted[randnode.Id] = true
-
-				// skip node we can't connect to
-				client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
-				if err != nil {
-					log.Printf("NewCacheClient failed %s...", err)
-					continue
-				}
-
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-
-				res, err := client.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
-				if err != nil {
-					log.Printf("GetLeader failed %s...", err)
-					continue
-				}
-
-				leader = c.Config.Nodes[res.Id]
-				break
+			select {
+				case <-shutdown_chan:
+					log.Printf("SHUTTING DOWN cluster config watcher")
+					return
+				case <-time.After(time.Second):
+					c.fetchClusterConfig()
 			}
-
-			if leader == nil {
-				continue
-			}
-
-			// get cluster config from current leader
-			req := pb.ClusterConfigRequest{CallerNodeId: "client"}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-
-			// restart process if we can't connect to leader
-			client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort), c.Config.EnableHttps)
-			if err != nil {
-				continue
-			}
-
-			res, err := client.GetClusterConfig(ctx, &req)
-			if err != nil {
-				log.Printf("error getting cluster config from node %s: %v", leader.Id, err)
-				continue
-			}
-
-			// create hashmap of online node IDs to find missing node in constant time
-			cluster_nodes := make(map[string]bool)
-			for _, nodecfg := range res.Nodes {
-				cluster_nodes[nodecfg.Id] = true
-			}
-
-			log.Printf("cluster config: %v", res.Nodes)
-
-			// remove missing nodes from ring
-			for _, node := range c.Config.Nodes {
-				if _, ok := cluster_nodes[node.Id]; !ok {
-					log.Printf("Removing node %s from ring", node.Id)
-					delete(c.Config.Nodes, node.Id)
-					c.Ring.RemoveNode(node.Id)
-				}
-			}
-
-			// add new nodes to ring
-			for _, nodecfg := range res.Nodes {
-				if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
-					log.Printf("Adding node %s to ring", nodecfg.Id)
-					c.Config.Nodes[nodecfg.Id] = nodelib.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-					c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-				}
-			}
-
-			// sleep for 5 seconds then check again
-			time.Sleep(time.Second)
 		}
 	}()
+}
+
+func (c *ClientWrapper) fetchClusterConfig() {
+	// ask random nodes who the leader until we get a response.
+	// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
+	var leader *nodelib.Node
+	attempted := make(map[string]bool)
+	for {
+		randnode := nodelib.GetRandomNode(c.Ring.Nodes)
+
+		// if all nodes are unavailable, throw error
+		if len(attempted) == len(c.Ring.Nodes) {
+			log.Fatalf("error: unable to connect to any nodes")
+		}
+
+		// skip attempted nodes
+		if _, ok := attempted[randnode.Id]; ok {
+			log.Printf("Skipping visited node %s...", randnode.Id)
+			continue
+		}
+
+		// mark visited and request leader
+		attempted[randnode.Id] = true
+
+		// skip node we can't connect to
+		log.Printf("StartClusterConfigWatcher - enable_https: %v", c.Config.EnableHttps)
+		client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
+		if err != nil {
+			log.Printf("NewCacheClient failed %s...", err)
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		res, err := client.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
+		if err != nil {
+			log.Printf("GetLeader failed %s...", err)
+			continue
+		}
+
+		leader = c.Config.Nodes[res.Id]
+		break
+	}
+
+	if leader == nil {
+		return
+	}
+
+	// get cluster config from current leader
+	req := pb.ClusterConfigRequest{CallerNodeId: "client"}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	// restart process if we can't connect to leader
+	client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort), c.Config.EnableHttps)
+	if err != nil {
+		return
+	}
+
+	res, err := client.GetClusterConfig(ctx, &req)
+	if err != nil {
+		log.Printf("error getting cluster config from node %s: %v", leader.Id, err)
+		return
+	}
+
+	// create hashmap of online node IDs to find missing node in constant time
+	cluster_nodes := make(map[string]bool)
+	for _, nodecfg := range res.Nodes {
+		cluster_nodes[nodecfg.Id] = true
+	}
+
+	log.Printf("cluster config: %v", res.Nodes)
+
+	// remove missing nodes from ring
+	for _, node := range c.Config.Nodes {
+		if _, ok := cluster_nodes[node.Id]; !ok {
+			log.Printf("Removing node %s from ring", node.Id)
+			delete(c.Config.Nodes, node.Id)
+			c.Ring.RemoveNode(node.Id)
+		}
+	}
+
+	// add new nodes to ring
+	for _, nodecfg := range res.Nodes {
+		if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
+			log.Printf("Adding node %s to ring", nodecfg.Id)
+			c.Config.Nodes[nodecfg.Id] = nodelib.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+			c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+		}
+	}
 }
 
 // Create new Client struct instance and sets up node ring with consistent hashing
@@ -139,7 +148,7 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 	var cluster_config []*pb.Node
 
 	for _, node := range init_nodes_config.Nodes {
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), !insecure)
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), init_nodes_config.EnableHttps)
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
@@ -171,14 +180,18 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 
 		// attempt to create client
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), !insecure)
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), init_nodes_config.EnableHttps)
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
 		}
 		config_map[node.Id].SetGrpcClient(c)
 	}
-	config := nodelib.NodesConfig{Nodes: config_map, EnableHttps: !insecure, EnableClientAuth: init_nodes_config.EnableClientAuth && !insecure}
+	config := nodelib.NodesConfig{
+		Nodes: config_map, 
+		EnableHttps: init_nodes_config.EnableHttps, 
+		EnableClientAuth: init_nodes_config.EnableClientAuth,
+	}
 	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir}
 }
 

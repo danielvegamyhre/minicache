@@ -1,0 +1,28 @@
+{
+    "nodes": {
+        "node0": {
+            "id": "node0",
+            "host": "localhost",
+            "rest_port": 8080,
+            "grpc_port": 5005,
+            "HashId": ""
+        },
+        "node1": {
+            "id": "node1",
+            "host": "localhost",
+            "rest_port": 8081,
+            "grpc_port": 5006,
+            "HashId": ""
+        },
+        "node2": {
+            "id": "node2",
+            "host": "localhost",
+            "rest_port": 8082,
+            "grpc_port": 5007,
+            "HashId": ""
+
+        }
+    },
+    "enable_https": false,
+    "enable_client_auth": false
+}

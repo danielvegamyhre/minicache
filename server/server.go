@@ -415,7 +415,15 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, i
 		}
 
 		// get new grpc id server
-		grpc_server, cache_server := NewCacheServer(capacity, config_file, verbose, nodeInfo.Id, config.EnableHttps && !insecure_http, config.EnableClientAuth)
+		log.Printf("enable https: %b, insecure: %b, client_auth: %b", config.EnableHttps, insecure_http, config.EnableClientAuth)
+		grpc_server, cache_server := NewCacheServer(
+			capacity, 
+			config_file, 
+			verbose, 
+			nodeInfo.Id, 
+			config.EnableHttps, 
+			config.EnableClientAuth,
+		)
 
 		// run gRPC server
 		log.Printf("Running gRPC server on port %d...", nodeInfo.GrpcPort)
