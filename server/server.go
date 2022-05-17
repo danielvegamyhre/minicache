@@ -50,6 +50,7 @@ type CacheServer struct {
 	node_id         string
 	group_id        string
 	client_auth     bool
+	https_enabled   bool
 	shutdown_chan   chan bool
 	decision_chan   chan string
 	mutex           sync.RWMutex
@@ -75,7 +76,7 @@ const (
 // Set node_id param to DYNAMIC to dynamically discover node id. 
 // Otherwise, manually set it to a valid node_id from the config file.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
-func NewCacheServer(capacity int, config_file string, verbose bool, node_id string, client_auth bool) (*grpc.Server, *CacheServer) {
+func NewCacheServer(capacity int, config_file string, verbose bool, node_id string, https_enabled bool, client_auth bool) (*grpc.Server, *CacheServer) {
 	// set up logging
 	sugared_logger := GetSugaredZapLogger(verbose)
 
@@ -119,20 +120,27 @@ func NewCacheServer(capacity int, config_file string, verbose bool, node_id stri
 		node_id:       final_node_id,
 		leader_id:     NO_LEADER,
 		client_auth:   client_auth,
+		https_enabled: https_enabled,
 		decision_chan: make(chan string, 1),
 	}
 
 	cache_server.router.GET("/get/:key", cache_server.GetHandler)
 	cache_server.router.POST("/put", cache_server.PutHandler)
+	var grpc_server *grpc.Server
+	if https_enabled {
 
-	// set up TLS
-	creds, err := LoadTLSCredentials(client_auth)
-	if err != nil {
-		cache_server.logger.Fatalf("failed to create credentials: %v", err)
+		creds, err := LoadTLSCredentials(client_auth)
+		if err != nil {
+			cache_server.logger.Fatalf("failed to create credentials: %v", err)
+		}
+
+		// register service instance with gRPC server
+		grpc_server = grpc.NewServer(grpc.Creds(creds))
+	} else {
+		grpc_server = grpc.NewServer()
 	}
 
-	// register service instance with gRPC server
-	grpc_server := grpc.NewServer(grpc.Creds(creds))
+	// set up TLS
 	pb.RegisterCacheServiceServer(grpc_server, &cache_server)
 	reflection.Register(grpc_server)
 	return grpc_server, &cache_server
@@ -172,7 +180,10 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
 	// setup http server
 	addr := fmt.Sprintf(":%d", port)
-	tlsConfig, _ := LoadTlsConfig(s.client_auth)
+	var tlsConfig *tls.Config
+	if s.https_enabled {
+		tlsConfig, _ = LoadTlsConfig(s.client_auth)
+	}
 	srv := &http.Server{
 		Addr:      addr,
 		Handler:   s.router,
@@ -182,8 +193,14 @@ func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
 	// run in background
 	go func() {
 		// service connections
-		if err := srv.ListenAndServeTLS("certs/server-cert.pem", "certs/server-key.pem"); err != nil {
-			log.Printf("listen: %s\n", err)
+		if s.https_enabled {
+			if err := srv.ListenAndServeTLS("certs/server-cert.pem", "certs/server-key.pem"); err != nil {
+				log.Printf("listen: %s\n via HTTPS", err)
+			}
+		} else {
+			if err := srv.ListenAndServe(); err != nil {
+				log.Printf("listen: %s\n via HTTP", err)
+			}
 		}
 	}()
 
@@ -277,15 +294,21 @@ func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
 }
 
 // New gRPC client for a server node
-func NewGrpcClientForNode(node *node.Node, client_auth bool) pb.CacheServiceClient {
+func NewGrpcClientForNode(node *node.Node, client_auth bool, https_enabled bool) pb.CacheServiceClient {
 	// set up TLS
-	creds, err := LoadTLSCredentials(client_auth)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create credentials: %v", err))
-	}
+	var conn *grpc.ClientConn
+	var err error
+	if https_enabled {
+		creds, err := LoadTLSCredentials(client_auth)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create credentials: %v", err))
+		}
 
-	// set up grpc connection
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
+		// set up grpc connection
+		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
+	} else {
+		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithInsecure())
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -296,11 +319,9 @@ func NewGrpcClientForNode(node *node.Node, client_auth bool) pb.CacheServiceClie
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
 func (s *CacheServer) NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
-	// set up TLS
-	creds, err := LoadTLSCredentials(s.client_auth)
-	if err != nil {
-		s.logger.Fatalf("failed to create credentials: %v", err)
-	}
+
+	var conn *grpc.ClientConn
+	var err error
 
 	var kacp = keepalive.ClientParameters{
 		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
@@ -310,15 +331,32 @@ func (s *CacheServer) NewCacheClient(server_host string, server_port int) (pb.Ca
 
 	// set up connection
 	addr := fmt.Sprintf("%s:%d", server_host, server_port)
-	conn, err := grpc.Dial(
-		addr,	
-		grpc.WithTransportCredentials(creds),
-		grpc.WithKeepaliveParams(kacp),
-		grpc.WithTimeout(time.Duration(time.Second)),
-	)
 	if err != nil {
-		return nil, err	
-	}	
+		return nil, err
+	}
+
+	if s.https_enabled {
+		// set up TLS
+		creds, err := LoadTLSCredentials(s.client_auth)
+		if err != nil {
+			s.logger.Fatalf("failed to create credentials: %v", err)
+		}
+
+		conn, err = grpc.Dial(
+			addr,
+			grpc.WithTransportCredentials(creds),
+			grpc.WithKeepaliveParams(kacp),
+			grpc.WithTimeout(time.Duration(time.Second)),
+		)
+	} else {
+
+		conn, err = grpc.Dial(
+			addr,
+			grpc.WithInsecure(),
+			grpc.WithKeepaliveParams(kacp),
+			grpc.WithTimeout(time.Duration(time.Second)),
+		)
+	}
 
 	// set up client
 	return pb.NewCacheServiceClient(conn), nil
@@ -379,7 +417,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool) [
 		}
 
 		// get new grpc id server
-		grpc_server, cache_server := NewCacheServer(capacity, config_file, verbose, nodeInfo.Id, config.EnableClientAuth)
+		grpc_server, cache_server := NewCacheServer(capacity, config_file, verbose, nodeInfo.Id, config.EnableHttps, config.EnableClientAuth)
 
 		// run gRPC server
 		log.Printf("Running gRPC server on port %d...", nodeInfo.GrpcPort)

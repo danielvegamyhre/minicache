@@ -19,6 +19,7 @@ func main() {
 	capacity := flag.Int("capacity", 2, "capacity of LRU cache")
 	verbose := flag.Bool("verbose", false, "log events to terminal")
 	client_auth := flag.Bool("client-auth", true, "require client authentication")
+	https_enabled := flag.Bool("https-enabled", true, "enable HTTPS or TLS")
 	config_file := flag.String("config", "", "filename of JSON config file with node info")
 	rest_port := flag.Int("rest-port", 8080, "enable REST API for client requests, instead of just gRPC")
 
@@ -31,7 +32,7 @@ func main() {
 	}
 
 	// get new grpc id server
-	grpc_server, cache_server := server.NewCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC, *client_auth)
+	grpc_server, cache_server := server.NewCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC, *https_enabled, *client_auth)
 
 	// run gRPC server
 	log.Printf("Running gRPC server on port %d...", *grpc_port)
