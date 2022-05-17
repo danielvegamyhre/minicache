@@ -1,43 +1,43 @@
 package cache_client
 
 import (
-	"fmt"
 	"bytes"
-	"log"
-	"errors"
-	"net/http"
-	"encoding/json"
-	"io/ioutil"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"time"
+
 	nodelib "github.com/malwaredllc/minicache/node"
-	"github.com/malwaredllc/minicache/ring"
 	"github.com/malwaredllc/minicache/pb"
+	"github.com/malwaredllc/minicache/ring"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/keepalive"	
+	"google.golang.org/grpc/keepalive"
 )
 
 type Payload struct {
-	Key 	string		`json:"key"`
-	Value	string		`json:"value"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
-
 
 // Client wrapper for interacting with Identity Server
 type ClientWrapper struct {
-	Config 		nodelib.NodesConfig
-	Ring		*ring.Ring
-	CertDir 	string
+	Config  nodelib.NodesConfig
+	Ring    *ring.Ring
+	CertDir string
 }
 
 // Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
 func (c *ClientWrapper) StartClusterConfigWatcher() {
-	go func(){
+	go func() {
 		for {
-			// ask random nodes who the leader until we get a response. 
+			// ask random nodes who the leader until we get a response.
 			// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
 			var leader *nodelib.Node
 			attempted := make(map[string]bool)
@@ -54,7 +54,7 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				attempted[randnode.Id] = true
 
 				// skip node we can't connect to
-				client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort))
+				client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
 				if err != nil {
 					continue
 				}
@@ -75,14 +75,13 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 				continue
 			}
 
-
 			// get cluster config from current leader
 			req := pb.ClusterConfigRequest{CallerNodeId: "client"}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
 			// restart process if we can't connect to leader
-			client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort))
+			client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort), c.Config.EnableHttps)
 			if err != nil {
 				continue
 			}
@@ -126,20 +125,20 @@ func (c *ClientWrapper) StartClusterConfigWatcher() {
 }
 
 // Create new Client struct instance and sets up node ring with consistent hashing
-func NewClientWrapper(cert_dir string, config_file string) *ClientWrapper {
+func NewClientWrapper(cert_dir string, config_file string, insecure bool) *ClientWrapper {
 	// get initial nodes from config file and add them to the ring
 	init_nodes_config := nodelib.LoadNodesConfig(config_file)
 	ring := ring.NewRing()
 	var cluster_config []*pb.Node
 
 	for _, node := range init_nodes_config.Nodes {
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort))
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), insecure)
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
 		}
 		node.SetGrpcClient(c)
-		
+
 		// try getting config from node
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -160,29 +159,24 @@ func NewClientWrapper(cert_dir string, config_file string) *ClientWrapper {
 	for _, node := range cluster_config {
 		// add to config map
 		config_map[node.Id] = nodelib.NewNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
-		
+
 		// add to ring
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 
 		// attempt to create client
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort))
+		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), insecure)
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
 		}
 		config_map[node.Id].SetGrpcClient(c)
 	}
-	config := nodelib.NodesConfig{Nodes: config_map}
+	config := nodelib.NodesConfig{Nodes: config_map, EnableHttps: init_nodes_config.EnableHttps, EnableClientAuth: init_nodes_config.EnableClientAuth}
 	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(cert_dir string, server_host string, server_port int) (pb.CacheServiceClient, error) {
-	// set up TLS
-	creds, err := LoadTLSCredentials(cert_dir)
-	if err != nil {
-		log.Fatalf("failed to create credentials: %v", err)
-	}
+func NewCacheClient(cert_dir string, server_host string, server_port int, insecure bool) (pb.CacheServiceClient, error) {
 
 	var kacp = keepalive.ClientParameters{
 		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
@@ -190,17 +184,28 @@ func NewCacheClient(cert_dir string, server_host string, server_port int) (pb.Ca
 		PermitWithoutStream: true,             // send pings even without active streams
 	}
 
+	tlsConnectionOption := grpc.WithInsecure()
+
+	if !insecure {
+		// set up TLS
+		creds, err := LoadTLSCredentials(cert_dir)
+		if err != nil {
+			log.Fatalf("failed to create credentials: %v", err)
+		}
+		tlsConnectionOption = grpc.WithTransportCredentials(creds)
+	}
+
 	// set up connection
 	addr := fmt.Sprintf("%s:%d", server_host, server_port)
 	conn, err := grpc.Dial(
-		addr,	
-		grpc.WithTransportCredentials(creds),
+		addr,
+		tlsConnectionOption,
 		grpc.WithKeepaliveParams(kacp),
 		grpc.WithTimeout(time.Duration(time.Second)),
 	)
 	if err != nil {
 		return nil, errors.New("unable to connect to node")
-	}	
+	}
 
 	// set up client
 	return pb.NewCacheServiceClient(conn), nil
@@ -216,18 +221,18 @@ func (c *ClientWrapper) Get(key string) (string, error) {
 	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.RestPort))
 
 	if err != nil {
-        return "", errors.New(fmt.Sprintf("error sending GET request: %s", err))
-    }
+		return "", errors.New(fmt.Sprintf("error sending GET request: %s", err))
+	}
 
-    defer resp.Body.Close()
+	defer resp.Body.Close()
 
-    body, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 
-    if err != nil {
-        return "", errors.New(fmt.Sprintf("error reading response: %s", err))
-    }
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("error reading response: %s", err))
+	}
 
-    return string(body), nil
+	return string(body), nil
 }
 
 // Put key-value pair into cache. Hash the key to find which node to store it in.
@@ -251,7 +256,7 @@ func (c *ClientWrapper) Put(key string, value string) error {
 	// check response
 	res, err := new(http.Client).Do(req)
 	defer res.Body.Close()
-	
+
 	if err != nil {
 		return errors.New(fmt.Sprintf("error sending POST request: %s", err))
 	}
@@ -265,7 +270,7 @@ func (c *ClientWrapper) GetGrpc(key string) (string, error) {
 
 	// make new client if necessary
 	if nodeInfo.GrpcClient == nil {
-		c, err := NewCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort))
+		c, err := NewCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort), c.Config.EnableHttps)
 		if err != nil {
 			return "", errors.New(fmt.Sprintf("error making gRPC client: %s", err))
 		}
@@ -291,7 +296,7 @@ func (c *ClientWrapper) PutGrpc(key string, value string) error {
 
 	// make new client if necessary
 	if nodeInfo.GrpcClient == nil {
-		c, err := NewCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort))
+		c, err := NewCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort), c.Config.EnableHttps)
 		if err != nil {
 			return errors.New(fmt.Sprintf("error making gRPC client: %s", err))
 		}
@@ -325,7 +330,7 @@ func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, erro
 
 	// Load client's certificate and private key
 	clientCert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s/client-cert.pem", cert_dir), 
+		fmt.Sprintf("%s/client-cert.pem", cert_dir),
 		fmt.Sprintf("%s/client-key.pem", cert_dir),
 	)
 	if err != nil {
@@ -340,4 +345,3 @@ func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, erro
 
 	return credentials.NewTLS(config), nil
 }
-
