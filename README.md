@@ -33,7 +33,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go)
 - [Set Up and Usage](https://github.com/malwaredllc/minicache#set-up-and-usage)
 	- [Create/update node configuration file](https://github.com/malwaredllc/minicache#1-createupdate-node-configuration-file)
-	- [Enabling/Disabling TLS](https://github.com/malwaredllc/<minicache id="2-enablingdisabling-tls"></minicache>)
+	- [Enabling/Disabling TLS](https://github.com/malwaredllc/minicache#2-enablingdisabling-tls)
 	- [Generating TLS certificates](https://github.com/malwaredllc/minicache#3-generating-tls-certificates)
 - [Examples](https://github.com/malwaredllc/minicache#examples)
 	- [Running a distributed cache with Docker Compose](https://github.com/malwaredllc/minicache#example-1-run-distributed-cache-using-docker-containers)
