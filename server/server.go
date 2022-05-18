@@ -273,18 +273,23 @@ func LoadTLSCredentials(client_auth bool) (credentials.TransportCredentials, err
 // Set up logger at the specified verbosity level
 func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
 	var level zap.AtomicLevel
+	output_paths := []string{"/var/log/minicache.log"}
+	error_paths := []string{"/var/log/minicache.err"}
+
 	if verbose {
 		level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		output_paths = append(output_paths, "stdout")
 	} else {
 		level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+		error_paths = append(output_paths, "stderr")
 	}
 	cfg := zap.Config{
 		Level:            level,
 		Development:      true,
 		Encoding:         "console",
 		EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
+		OutputPaths:      output_paths,
+		ErrorOutputPaths: error_paths,
 	}
 	logger, err := cfg.Build()
 	if err != nil {
