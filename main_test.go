@@ -23,14 +23,16 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	// start servers
 	capacity := 100
 	verbose := false
+	insecure := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+	shutdown_chan := make(chan bool, 1)
 
-	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, false)
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, insecure)
 
 	// start client
-	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, false)
-	c.StartClusterConfigWatcher()
+	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure)
+	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -70,6 +72,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 			t.Logf("Http server shutdown error: %s", err)
 		}
 	}
+	shutdown_chan <- true
 }
 
 // 10 goroutines make 10k requests each via REST API (but http). Count cache misses.
@@ -77,14 +80,16 @@ func Test10kConcurrentRestApiPutsInsecure(t *testing.T) {
 	// start servers
 	capacity := 100
 	verbose := false
+	insecure := true
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH_HTTP)
+	shutdown_chan := make(chan bool, 1)
 
-	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, true)
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, insecure)
 
 	// start client
-	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, true)
-	c.StartClusterConfigWatcher()
+	cl := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure)
+	cl.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -99,7 +104,7 @@ func Test10kConcurrentRestApiPutsInsecure(t *testing.T) {
 			defer wg.Done()
 			for i := 1; i <= 1000; i++ {
 				v := strconv.Itoa(i)
-				err := c.Put(v, v)
+				err := cl.Put(v, v)
 				if err != nil {
 					mutex.Lock()
 					miss += 1
@@ -124,6 +129,8 @@ func Test10kConcurrentRestApiPutsInsecure(t *testing.T) {
 			t.Logf("Http server shutdown error: %s", err)
 		}
 	}
+
+	shutdown_chan <- true
 }
 
 // 10 goroutines make 10k requests each vi gRPC. Count cache misses.
@@ -131,14 +138,16 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	// start servers
 	capacity := 100
 	verbose := false
+	insecure := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+	shutdown_chan := make(chan bool, 1)
 
-	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, false)
+	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, insecure)
 
 	// start client
-	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, false)
-	c.StartClusterConfigWatcher()
+	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure)
+	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -177,4 +186,6 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 			t.Logf("Http server shutdown error: %s", err)
 		}
 	}
+
+	shutdown_chan <- true
 }
