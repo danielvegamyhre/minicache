@@ -15,26 +15,26 @@ import (
 // New nodes call this RPC on the leader when they come online.
 func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.Node) (*pb.GenericResponse, error) {	
 	// if we already have this node registered, return
-	if _, ok := s.nodes_config.Nodes[nodeInfo.Id]; ok {
+	if _, ok := s.nodesConfig.Nodes[nodeInfo.Id]; ok {
 		s.logger.Infof("Node %s already part of cluster", nodeInfo.Id)
 		return &pb.GenericResponse{Data: SUCCESS}, nil
 	}
 
 	// add node to hashmap config for easy lookup
-	s.nodes_config.Nodes[nodeInfo.Id] = node.NewNode(nodeInfo.Id, nodeInfo.Host, nodeInfo.RestPort, nodeInfo.GrpcPort)
+	s.nodesConfig.Nodes[nodeInfo.Id] = node.NewNode(nodeInfo.Id, nodeInfo.Host, nodeInfo.RestPort, nodeInfo.GrpcPort)
 
 	// send update to other nodes in cluster
 	var nodes []*pb.Node
-	for _, node := range s.nodes_config.Nodes {
+	for _, node := range s.nodesConfig.Nodes {
 		nodes = append(nodes, &pb.Node{Id: node.Id, Host: node.Host, RestPort: node.RestPort, GrpcPort: node.GrpcPort})
 	}
-	for _, node := range s.nodes_config.Nodes {
+	for _, node := range s.nodesConfig.Nodes {
 		// skip self
-		if node.Id == s.node_id {
+		if node.Id == s.nodeID {
 			continue
 		}
 		// create context
-		req_ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		reqCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		cfg := pb.ClusterConfig{Nodes: nodes}
@@ -46,7 +46,7 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 	            fmt.Sprintf("Unable to connect to node being registered: %s", node.Id),
 	        )
 		}
-		c.UpdateClusterConfig(req_ctx, &cfg)
+		c.UpdateClusterConfig(reqCtx, &cfg)
 	}
 	return &pb.GenericResponse{Data: SUCCESS}, nil
 }
@@ -54,7 +54,7 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 // gRPC handler for getting cluster config
 func (s *CacheServer) GetClusterConfig(ctx context.Context, req *pb.ClusterConfigRequest) (*pb.ClusterConfig, error) {
 	var nodes []*pb.Node
-	for _, node := range s.nodes_config.Nodes {
+	for _, node := range s.nodesConfig.Nodes {
 		nodes = append(nodes, &pb.Node{Id: node.Id, Host: node.Host, RestPort: node.RestPort, GrpcPort: node.GrpcPort})
 	}
 	s.logger.Infof("Returning cluster config to node %s: %v", req.CallerNodeId, nodes)
@@ -64,9 +64,9 @@ func (s *CacheServer) GetClusterConfig(ctx context.Context, req *pb.ClusterConfi
 // gRPC handler for updating cluster config with incoming info
 func (s *CacheServer) UpdateClusterConfig(ctx context.Context, req *pb.ClusterConfig) (*empty.Empty, error) {
 	s.logger.Info("Updating cluster config")
-	s.nodes_config.Nodes = make(map[string]*node.Node)
+	s.nodesConfig.Nodes = make(map[string]*node.Node)
 	for _, nodecfg := range req.Nodes {
-		s.nodes_config.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+		s.nodesConfig.Nodes[nodecfg.Id] = node.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
 	}
 	return &empty.Empty{}, nil
 }
@@ -77,16 +77,16 @@ func (s *CacheServer) updateClusterConfigInternal() {
 
 	// send update to other nodes in cluster
 	var nodes []*pb.Node
-	for _, node := range s.nodes_config.Nodes {
+	for _, node := range s.nodesConfig.Nodes {
 		nodes = append(nodes, &pb.Node{Id: node.Id, Host: node.Host, RestPort: node.RestPort, GrpcPort: node.GrpcPort})
 	}
-	for _, node := range s.nodes_config.Nodes {
+	for _, node := range s.nodesConfig.Nodes {
 		// skip self
-		if node.Id == s.node_id {
+		if node.Id == s.nodeID {
 			continue
 		}
 		// create context
-		req_ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		reqCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		cfg := pb.ClusterConfig{Nodes: nodes}
@@ -99,7 +99,7 @@ func (s *CacheServer) updateClusterConfigInternal() {
 			continue
 		}
 
-		_, err = c.UpdateClusterConfig(req_ctx, &cfg)
+		_, err = c.UpdateClusterConfig(reqCtx, &cfg)
 		if err != nil {
 			s.logger.Infof("error sending cluster config to node %s: %v", node.Id, err)
 		}

@@ -3,29 +3,29 @@
         "node0": {
             "id": "node0",
             "host": "cacheserver0",
-            "rest_port": 8080,
-            "grpc_port": 5005,
+            "restPort": 8080,
+            "grpcPort": 5005,
             "HashId": ""
         },
         "node1": {
             "id": "node1",
             "host": "cacheserver1",
-            "rest_port": 8080,
-            "grpc_port": 5005,
+            "restPort": 8080,
+            "grpcPort": 5005,
             "HashId": ""
         },
         "node2": {
             "id": "node2",
             "host": "cacheserver2",
-            "rest_port": 8080,
-            "grpc_port": 5005,
+            "restPort": 8080,
+            "grpcPort": 5005,
             "HashId": ""
         }
     },
-    "enable_https": true,
-    "enable_client_auth": true,
-    "server_logfile": "minicache.log",
-    "server_errfile": "minicache.err",
-    "client_logfile": "minicache-client.log",
-    "client_errfile": "minicache-client.err"
+    "enableHTTPS": true,
+    "enableClientAuth": true,
+    "serverLogFile": "minicache.log",
+    "serverErrFile": "minicache.err",
+    "clientLogFile": "minicache-client.log",
+    "clientErrFile": "minicache-client.err"
 }

@@ -1,4 +1,4 @@
-package cache_client
+package cacheClient
 
 import (
 	"bytes"
@@ -35,24 +35,24 @@ type ClientWrapper struct {
 }
 
 // Create new Client struct instance and sets up node ring with consistent hashing
-func NewClientWrapper(cert_dir string, config_file string, insecure bool, verbose bool) *ClientWrapper {
+func NewClientWrapper(certDir string, configFile string, insecure bool, verbose bool) *ClientWrapper {
 
 	// get initial nodes from config file and add them to the ring
-	init_nodes_config := nodelib.LoadNodesConfig(config_file)
+	initNodesConfig := nodelib.LoadNodesConfig(configFile)
 
 	// set up logging
 	logger := GetSugaredZapLogger(
-				init_nodes_config.ClientLogfile, 
-				init_nodes_config.ClientErrfile, 
+				initNodesConfig.ClientLogfile, 
+				initNodesConfig.ClientErrfile, 
 				verbose,
 			  )
 
 	// set up consistent hashing ring and create grpc clients to active nodes
 	ring := ring.NewRing()
-	var cluster_config []*pb.Node
+	var clusterConfig []*pb.Node
 
-	for _, node := range init_nodes_config.Nodes {
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), init_nodes_config.EnableHttps)
+	for _, node := range initNodesConfig.Nodes {
+		c, err := NewCacheClient(certDir, node.Host, int(node.GrpcPort), initNodesConfig.EnableHttps)
 		if err != nil {
 			logger.Infof("error: %v", err)
 			continue
@@ -68,40 +68,40 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool, verbos
 			logger.Infof("error getting cluster config from node %s: %v", node.Id, err)
 			continue
 		}
-		cluster_config = res.Nodes
+		clusterConfig = res.Nodes
 		break
 	}
 
-	logger.Infof("Client received initial cluster config: %v", cluster_config)
+	logger.Infof("Client received initial cluster config: %v", clusterConfig)
 
 	// create config map from ring
-	config_map := make(map[string]*nodelib.Node)
-	for _, node := range cluster_config {
+	configMap := make(map[string]*nodelib.Node)
+	for _, node := range clusterConfig {
 		// add to config map
-		config_map[node.Id] = nodelib.NewNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
+		configMap[node.Id] = nodelib.NewNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 
 		// add to ring
 		ring.AddNode(node.Id, node.Host, node.RestPort, node.GrpcPort)
 
 		// attempt to create client
-		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), init_nodes_config.EnableHttps)
+		c, err := NewCacheClient(certDir, node.Host, int(node.GrpcPort), initNodesConfig.EnableHttps)
 		if err != nil {
 			logger.Infof("error: %v", err)
 			continue
 		}
-		config_map[node.Id].SetGrpcClient(c)
+		configMap[node.Id].SetGrpcClient(c)
 	}
 	config := nodelib.NodesConfig{
-		Nodes: config_map, 
-		EnableHttps: init_nodes_config.EnableHttps, 
-		EnableClientAuth: init_nodes_config.EnableClientAuth,
+		Nodes: configMap, 
+		EnableHttps: initNodesConfig.EnableHttps, 
+		EnableClientAuth: initNodesConfig.EnableClientAuth,
 	}
 
-	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir, Logger: logger}
+	return &ClientWrapper{Config: config, Ring: ring, CertDir: certDir, Logger: logger}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
-func NewCacheClient(cert_dir string, server_host string, server_port int, enable_https bool) (pb.CacheServiceClient, error) {
+func NewCacheClient(cert_dir string, server_host string, server_port int, enableHTTPS bool) (pb.CacheServiceClient, error) {
 
 	var kacp = keepalive.ClientParameters{
 		Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
@@ -111,7 +111,7 @@ func NewCacheClient(cert_dir string, server_host string, server_port int, enable
 
 	tlsConnectionOption := grpc.WithInsecure()
 
-	if enable_https {
+	if enableHTTPS {
 		// set up TLS
 		creds, err := LoadTLSCredentials(cert_dir)
 		if err != nil {
@@ -243,9 +243,9 @@ func (c *ClientWrapper) PutGrpc(key string, value string) error {
 }
 
 // Utility function to set up mTLS config and credentials
-func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, error) {
+func LoadTLSCredentials(certDir string) (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed server's certificate
-	pemServerCA, err := ioutil.ReadFile(fmt.Sprintf("%s/ca-cert.pem", cert_dir))
+	pemServerCA, err := ioutil.ReadFile(fmt.Sprintf("%s/ca-cert.pem", certDir))
 	if err != nil {
 		return nil, err
 	}
@@ -257,8 +257,8 @@ func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, erro
 
 	// Load client's certificate and private key
 	clientCert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s/client-cert.pem", cert_dir),
-		fmt.Sprintf("%s/client-key.pem", cert_dir),
+		fmt.Sprintf("%s/client-cert.pem", certDir),
+		fmt.Sprintf("%s/client-key.pem", certDir),
 	)
 	if err != nil {
 		return nil, err
@@ -275,26 +275,26 @@ func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, erro
 
 
 // Set up logger at the specified verbosity level
-func GetSugaredZapLogger(log_file string, err_file string, verbose bool) *zap.SugaredLogger {
+func GetSugaredZapLogger(logFile string, errFile string, verbose bool) *zap.SugaredLogger {
 	var level zap.AtomicLevel
-	output_paths := []string{log_file}
-	error_paths := []string{err_file}
+	outputPaths := []string{logFile}
+	errorPaths := []string{errFile}
 
 	// also log to console in verbose mode
 	if verbose {
 		level = zap.NewAtomicLevelAt(zap.DebugLevel)
-		output_paths = append(output_paths, "stdout")
+		outputPaths = append(outputPaths, "stdout")
 	} else {
 		level = zap.NewAtomicLevelAt(zap.ErrorLevel)
-		error_paths = append(output_paths, "stderr")
+		errorPaths = append(outputPaths, "stderr")
 	}
 	cfg := zap.Config{
 		Level:            level,
 		Development:      true,
 		Encoding:         "console",
 		EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
-		OutputPaths:      output_paths,
-		ErrorOutputPaths: error_paths,
+		OutputPaths:      outputPaths,
+		ErrorOutputPaths: errorPaths,
 	}
 	logger, err := cfg.Build()
 	if err != nil {
@@ -305,12 +305,12 @@ func GetSugaredZapLogger(log_file string, err_file string, verbose bool) *zap.Su
 
 
 // Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
-func (c *ClientWrapper) StartClusterConfigWatcher(shutdown_chan <-chan bool) {
+func (c *ClientWrapper) StartClusterConfigWatcher(shutdownChan <-chan bool) {
 	go func() {
 		// get cluster config every 1 second until shutdown signal received
 		for {
 			select {
-				case <-shutdown_chan:
+				case <-shutdownChan:
 					return
 				case <-time.After(time.Second):
 					c.fetchClusterConfig()
@@ -383,14 +383,14 @@ func (c *ClientWrapper) fetchClusterConfig() {
 	}
 
 	// create hashmap of online node IDs to find missing node in constant time
-	cluster_nodes := make(map[string]bool)
+	clusterNodes := make(map[string]bool)
 	for _, nodecfg := range res.Nodes {
-		cluster_nodes[nodecfg.Id] = true
+		clusterNodes[nodecfg.Id] = true
 	}
 
 	// remove missing nodes from ring
 	for _, node := range c.Config.Nodes {
-		if _, ok := cluster_nodes[node.Id]; !ok {
+		if _, ok := clusterNodes[node.Id]; !ok {
 			c.Logger.Infof("Removing node %s from ring", node.Id)
 			delete(c.Config.Nodes, node.Id)
 			c.Ring.RemoveNode(node.Id)

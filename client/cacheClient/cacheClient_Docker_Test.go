@@ -1,4 +1,4 @@
-package cache_client
+package cacheClient
 
 // NOTE: BEFORE RUNNING THESE TESTS YOU MUST LAUNCH CACHE SERVERS USING DOCKER CONTAINERS
 // INSTRUCTIONS HERE: https://github.com/malwaredllc/minicache#example-1-run-distributed-cache-using-docker-containers

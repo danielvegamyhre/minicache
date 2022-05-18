@@ -63,11 +63,11 @@ func HashId(key string) uint32 {
 }
 
 // Load nodes config file
-func LoadNodesConfig(config_file string) NodesConfig {
-	file, _ := ioutil.ReadFile(config_file)
+func LoadNodesConfig(configFile string) NodesConfig {
+	file, _ := ioutil.ReadFile(configFile)
 
 	// set defaults
-	nodes_config := NodesConfig{
+	nodesConfig := NodesConfig{
 		EnableClientAuth: 	true, 
 		EnableHttps: 		true,
 		ServerLogfile: 		"minicache.log",
@@ -76,21 +76,21 @@ func LoadNodesConfig(config_file string) NodesConfig {
 		ClientErrfile: 		"minicache-client.err",
 	}
 
-	_ = json.Unmarshal([]byte(file), &nodes_config)
+	_ = json.Unmarshal([]byte(file), &nodesConfig)
 
 	// if config is empty, add 1 node at localhost:8080
-	if len(nodes_config.Nodes) == 0 {
-		log.Printf("couldn't find config file or it was empty: %s", config_file)
+	if len(nodesConfig.Nodes) == 0 {
+		log.Printf("couldn't find config file or it was empty: %s", configFile)
 		log.Println("using default node localhost")
-		nodes_config = NodesConfig{Nodes: make(map[string]*Node)}
-		default_node := NewNode("node0", "localhost", 8080, 5005)
-		nodes_config.Nodes[default_node.Id] = default_node
+		nodesConfig = NodesConfig{Nodes: make(map[string]*Node)}
+		defaultNode := NewNode("node0", "localhost", 8080, 5005)
+		nodesConfig.Nodes[defaultNode.Id] = defaultNode
 	} else {
-		for _, nodeInfo := range nodes_config.Nodes {
+		for _, nodeInfo := range nodesConfig.Nodes {
 			nodeInfo.HashId = HashId(nodeInfo.Id)
 		}
 	}
-	return nodes_config
+	return nodesConfig
 }
 
 // Determine which node ID we are
