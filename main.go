@@ -56,7 +56,7 @@ func main() {
 
 	// run HTTP server
 	cache_server.LogInfoLevel(fmt.Sprintf("Running REST API server on port %d...", *rest_port))
-	http_server := cache_server.RunAndReturnHttpServer(*rest_port)
+	http_server := cache_server.RunAndReturnHTTPServer(*rest_port)
 
 	// set up shutdown handler and block until sigint or sigterm received
 	c := make(chan os.Signal, 1)

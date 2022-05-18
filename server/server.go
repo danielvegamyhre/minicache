@@ -1,4 +1,5 @@
-// This package defines a LRU cache server
+// This package defines a LRU cache server which supports client-side consistent hashing, 
+// TLS (and mTLS), client access via both HTTP/gRPC, 
 package server
 
 import (
@@ -176,7 +177,7 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, <-result)
 }
 
-func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
+func (s *CacheServer) RunAndReturnHTTPServer(port int) *http.Server {
 	// setup http server
 	addr := fmt.Sprintf(":%d", port)
 	var tlsConfig *tls.Config
@@ -194,11 +195,11 @@ func (s *CacheServer) RunAndReturnHttpServer(port int) *http.Server {
 		// service connections
 		if s.https_enabled {
 			if err := srv.ListenAndServeTLS("certs/server-cert.pem", "certs/server-key.pem"); err != nil {
-				log.Printf("listen: %s\n via HTTPS", err)
+				s.logger.Infof("listen: %s\n via HTTPS", err)
 			}
 		} else {
 			if err := srv.ListenAndServe(); err != nil {
-				log.Printf("listen: %s\n via HTTP", err)
+				s.logger.Infof("listen: %s\n via HTTP", err)
 			}
 		}
 	}()
@@ -357,7 +358,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, i
 
 		// run HTTP server
 		logger.Infof(fmt.Sprintf("Node %s running REST API server on port %d...", nodeInfo.Id, nodeInfo.RestPort))
-		http_server := cache_server.RunAndReturnHttpServer(int(nodeInfo.RestPort))
+		http_server := cache_server.RunAndReturnHTTPServer(int(nodeInfo.RestPort))
 
 		components = append(components, ServerComponents{GrpcServer: grpc_server, HttpServer: http_server})
 	}

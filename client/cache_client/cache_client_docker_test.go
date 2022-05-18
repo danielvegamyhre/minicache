@@ -24,10 +24,11 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+	shutdown_chan := make(chan bool, 1)
 
 	// start client
 	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
-	c.StartClusterConfigWatcher()
+	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -54,6 +55,9 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	}	
 	wg.Wait()
 	elapsed := time.Since(start)
+
+	shutdown_chan <- true
+
 	t.Logf("Time to complete 10k puts via gRPC: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
@@ -66,10 +70,11 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+	shutdown_chan := make(chan bool, 1)
 
 	// start client
 	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
-	c.StartClusterConfigWatcher()
+	c.StartClusterConfigWatcher(shutdown_chan)
 
 
 	var wg sync.WaitGroup
@@ -95,6 +100,9 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	}	
 	wg.Wait()
 	elapsed := time.Since(start)
+
+	shutdown_chan <- true
+
 	t.Logf("Time to complete 10k puts via REST API: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
