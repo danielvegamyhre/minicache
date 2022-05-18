@@ -16,7 +16,9 @@ import (
 
 // NodesConfig struct holds info about all server nodes in the network
 type NodesConfig struct {
-	Nodes 	map[string]*Node 	`json:"nodes"`
+	Nodes            map[string]*Node `json:"nodes"`
+	EnableClientAuth bool             `json:"enable_client_auth"`
+	EnableHttps      bool             `json:"enable_https"`
 }
 
 // Node struct contains all info we need about a server node, as well as 
@@ -59,7 +61,7 @@ func HashId(key string) uint32 {
 // Load nodes config file
 func LoadNodesConfig(config_file string) NodesConfig {
 	file, _ := ioutil.ReadFile(config_file)
-	nodes_config := NodesConfig{}
+	nodes_config := NodesConfig{EnableClientAuth: true, EnableHttps: true}
 	_ = json.Unmarshal([]byte(file), &nodes_config)
 
 	// if config is empty, add 1 node at localhost:8080
