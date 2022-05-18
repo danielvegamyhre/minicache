@@ -40,7 +40,6 @@ func (c *ClientWrapper) StartClusterConfigWatcher(shutdown_chan <-chan bool) {
 		for {
 			select {
 				case <-shutdown_chan:
-					log.Printf("SHUTTING DOWN cluster config watcher")
 					return
 				case <-time.After(time.Second):
 					c.fetchClusterConfig()
