@@ -71,7 +71,6 @@ func (c *ClientWrapper) fetchClusterConfig() {
 		attempted[randnode.Id] = true
 
 		// skip node we can't connect to
-		log.Printf("StartClusterConfigWatcher - enable_https: %v", c.Config.EnableHttps)
 		client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
 		if err != nil {
 			log.Printf("NewCacheClient failed %s...", err)
@@ -117,8 +116,6 @@ func (c *ClientWrapper) fetchClusterConfig() {
 	for _, nodecfg := range res.Nodes {
 		cluster_nodes[nodecfg.Id] = true
 	}
-
-	log.Printf("cluster config: %v", res.Nodes)
 
 	// remove missing nodes from ring
 	for _, node := range c.Config.Nodes {
@@ -167,7 +164,7 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 		break
 	}
 
-	log.Printf("initial cluster config: %v", cluster_config)
+	log.Printf("Client received initial cluster config: %v", cluster_config)
 
 	// create config map from ring
 	config_map := make(map[string]*nodelib.Node)
