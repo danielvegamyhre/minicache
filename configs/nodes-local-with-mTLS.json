@@ -23,5 +23,9 @@
         }
     },
     "enable_https": true,
-    "enable_client_auth": true
+    "enable_client_auth": true,
+    "server_logfile": "minicache.log",
+    "server_errfile": "minicache.err",
+    "client_logfile": "minicache-client.log",
+    "client_errfile": "minicache-client.err"
 }

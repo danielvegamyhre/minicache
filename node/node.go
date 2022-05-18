@@ -19,6 +19,10 @@ type NodesConfig struct {
 	Nodes            map[string]*Node `json:"nodes"`
 	EnableClientAuth bool             `json:"enable_client_auth"`
 	EnableHttps      bool             `json:"enable_https"`
+	ServerLogfile	 string 		  `json:"server_logfile"`
+	ServerErrfile	 string 		  `json:"server_errfile"`
+	ClientLogfile	 string 		  `json:"client_logfile"`
+	ClientErrfile	 string 		  `json:"client_errfile"`
 }
 
 // Node struct contains all info we need about a server node, as well as 
@@ -61,7 +65,17 @@ func HashId(key string) uint32 {
 // Load nodes config file
 func LoadNodesConfig(config_file string) NodesConfig {
 	file, _ := ioutil.ReadFile(config_file)
-	nodes_config := NodesConfig{EnableClientAuth: true, EnableHttps: true}
+
+	// set defaults
+	nodes_config := NodesConfig{
+		EnableClientAuth: 	true, 
+		EnableHttps: 		true,
+		ServerLogfile: 		"minicache.log",
+		ServerErrfile: 		"minicache.err",
+		ClientLogfile: 		"minicache-client.log",
+		ClientErrfile: 		"minicache-client.err",
+	}
+
 	_ = json.Unmarshal([]byte(file), &nodes_config)
 
 	// if config is empty, add 1 node at localhost:8080

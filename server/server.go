@@ -77,11 +77,15 @@ const (
 // Otherwise, manually set it to a valid node_id from the config file.
 // Returns tuple of (gRPC server instance, registered Cache CacheServer instance).
 func NewCacheServer(capacity int, config_file string, verbose bool, node_id string, https_enabled bool, client_auth bool) (*grpc.Server, *CacheServer) {
-	// set up logging
-	sugared_logger := GetSugaredZapLogger(verbose)
-
 	// get nodes config
 	nodes_config := node.LoadNodesConfig(config_file)
+
+	// set up logging
+	sugared_logger := GetSugaredZapLogger(
+						nodes_config.ServerLogfile, 
+						nodes_config.ServerErrfile, 
+						verbose,
+					  )
 
 	// determine which node id we are and which group we are in
 	var final_node_id string
@@ -89,6 +93,7 @@ func NewCacheServer(capacity int, config_file string, verbose bool, node_id stri
 		log.Printf("passed node id: %s", node_id)
 		final_node_id = node.GetCurrentNodeId(nodes_config)
 		log.Printf("final node id: %s", final_node_id)
+
 		// if this is not one of the initial nodes in the config file, add it dynamically
 		if _, ok := nodes_config.Nodes[final_node_id]; !ok {
 			host, _ := os.Hostname()
@@ -223,104 +228,6 @@ func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty
 	return &empty.Empty{}, nil
 }
 
-//Set up mutual TLS config
-func LoadTlsConfig(client_auth bool) (*tls.Config, error) {
-	// Load certificate of the CA who signed client's certificate
-	pemClientCA, err := ioutil.ReadFile("certs/ca-cert.pem")
-	if err != nil {
-		return nil, err
-	}
-
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(pemClientCA) {
-		return nil, fmt.Errorf("failed to add client CA's certificate")
-	}
-
-	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair("certs/server-cert.pem", "certs/server-key.pem")
-	if err != nil {
-		return nil, err
-	}
-
-	var clientAuth tls.ClientAuthType
-	if client_auth {
-		clientAuth = tls.RequireAndVerifyClientCert
-	} else {
-		clientAuth = tls.NoClientCert
-	}
-
-	// Create the credentials and return it
-	config := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   clientAuth,
-		ClientCAs:    certPool,
-		RootCAs:      certPool,
-	}
-
-	return config, nil
-
-}
-
-// Set up mutual TLS config and credentials
-func LoadTLSCredentials(client_auth bool) (credentials.TransportCredentials, error) {
-	config, err := LoadTlsConfig(client_auth)
-	if err != nil {
-		return nil, err
-	}
-	return credentials.NewTLS(config), nil
-}
-
-// Set up logger at the specified verbosity level
-func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
-	var level zap.AtomicLevel
-	output_paths := []string{"/var/log/minicache.log"}
-	error_paths := []string{"/var/log/minicache.err"}
-
-	if verbose {
-		level = zap.NewAtomicLevelAt(zap.DebugLevel)
-		output_paths = append(output_paths, "stdout")
-	} else {
-		level = zap.NewAtomicLevelAt(zap.ErrorLevel)
-		error_paths = append(output_paths, "stderr")
-	}
-	cfg := zap.Config{
-		Level:            level,
-		Development:      true,
-		Encoding:         "console",
-		EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
-		OutputPaths:      output_paths,
-		ErrorOutputPaths: error_paths,
-	}
-	logger, err := cfg.Build()
-	if err != nil {
-		panic(err)
-	}
-	return logger.Sugar()
-}
-
-// New gRPC client for a server node
-func NewGrpcClientForNode(node *node.Node, client_auth bool, https_enabled bool) pb.CacheServiceClient {
-	// set up TLS
-	var conn *grpc.ClientConn
-	var err error
-	if https_enabled {
-		creds, err := LoadTLSCredentials(client_auth)
-		if err != nil {
-			panic(fmt.Sprintf("failed to create credentials: %v", err))
-		}
-
-		// set up grpc connection
-		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
-	} else {
-		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithInsecure())
-	}
-	if err != nil {
-		panic(err)
-	}
-
-	// new identity service client
-	return pb.NewCacheServiceClient(conn)
-}
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
 func (s *CacheServer) NewCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
@@ -406,10 +313,21 @@ func (s *CacheServer) RegisterNodeInternal() {
 	}
 }
 
+// Log function that can be called externally
+func (s *CacheServer) LogInfoLevel(msg string) {
+	s.logger.Info(msg)
+}
+
 // Create and run all servers defined in config file and return list of server components
 func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, insecure_http bool) []ServerComponents {
-	log.Printf("Creating and running all nodes from config file: %s", config_file)
 	config := node.LoadNodesConfig(config_file)
+
+	// set up logging
+	logger := GetSugaredZapLogger(
+						config.ServerLogfile, 
+						config.ServerErrfile, 
+						verbose,
+					  )
 
 	var components []ServerComponents
 
@@ -431,7 +349,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, i
 		)
 
 		// run gRPC server
-		log.Printf("Node %s running gRPC server on port %d...", nodeInfo.Id, nodeInfo.GrpcPort)
+		logger.Infof(fmt.Sprintf("Node %s running gRPC server on port %d...", nodeInfo.Id, nodeInfo.GrpcPort))
 		go grpc_server.Serve(listener)
 
 		// register node with cluster
@@ -444,10 +362,111 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, i
 		go cache_server.StartLeaderHeartbeatMonitor()
 
 		// run HTTP server
-		log.Printf("Node %s running REST API server on port %d...", nodeInfo.Id, nodeInfo.RestPort)
+		logger.Infof(fmt.Sprintf("Node %s running REST API server on port %d...", nodeInfo.Id, nodeInfo.RestPort))
 		http_server := cache_server.RunAndReturnHttpServer(int(nodeInfo.RestPort))
 
 		components = append(components, ServerComponents{GrpcServer: grpc_server, HttpServer: http_server})
 	}
 	return components
+}
+
+
+//Set up mutual TLS config
+func LoadTlsConfig(client_auth bool) (*tls.Config, error) {
+	// Load certificate of the CA who signed client's certificate
+	pemClientCA, err := ioutil.ReadFile("certs/ca-cert.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemClientCA) {
+		return nil, fmt.Errorf("failed to add client CA's certificate")
+	}
+
+	// Load server's certificate and private key
+	serverCert, err := tls.LoadX509KeyPair("certs/server-cert.pem", "certs/server-key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	var clientAuth tls.ClientAuthType
+	if client_auth {
+		clientAuth = tls.RequireAndVerifyClientCert
+	} else {
+		clientAuth = tls.NoClientCert
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   clientAuth,
+		ClientCAs:    certPool,
+		RootCAs:      certPool,
+	}
+
+	return config, nil
+
+}
+
+// Set up mutual TLS config and credentials
+func LoadTLSCredentials(client_auth bool) (credentials.TransportCredentials, error) {
+	config, err := LoadTlsConfig(client_auth)
+	if err != nil {
+		return nil, err
+	}
+	return credentials.NewTLS(config), nil
+}
+
+// Set up logger at the specified verbosity level
+func GetSugaredZapLogger(log_file string, err_file string, verbose bool) *zap.SugaredLogger {
+	var level zap.AtomicLevel
+	output_paths := []string{log_file}
+	error_paths := []string{err_file}
+
+	// also log to console in verbose mode
+	if verbose {
+		level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		output_paths = append(output_paths, "stdout")
+	} else {
+		level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+		error_paths = append(output_paths, "stderr")
+	}
+	cfg := zap.Config{
+		Level:            level,
+		Development:      true,
+		Encoding:         "console",
+		EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
+		OutputPaths:      output_paths,
+		ErrorOutputPaths: error_paths,
+	}
+	logger, err := cfg.Build()
+	if err != nil {
+		panic(err)
+	}
+	return logger.Sugar()
+}
+
+// New gRPC client for a server node
+func NewGrpcClientForNode(node *node.Node, client_auth bool, https_enabled bool) pb.CacheServiceClient {
+	// set up TLS
+	var conn *grpc.ClientConn
+	var err error
+	if https_enabled {
+		creds, err := LoadTLSCredentials(client_auth)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create credentials: %v", err))
+		}
+
+		// set up grpc connection
+		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
+	} else {
+		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithInsecure())
+	}
+	if err != nil {
+		panic(err)
+	}
+
+	// new identity service client
+	return pb.NewCacheServiceClient(conn)
 }

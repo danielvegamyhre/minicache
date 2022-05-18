@@ -31,7 +31,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, insecure)
 
 	// start client
-	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure)
+	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
@@ -88,7 +88,7 @@ func Test10kConcurrentRestApiPutsInsecure(t *testing.T) {
 	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, insecure)
 
 	// start client
-	cl := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure)
+	cl := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	cl.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
@@ -146,7 +146,7 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	components := server.CreateAndRunAllFromConfig(capacity, abs_config_path, verbose, insecure)
 
 	// start client
-	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure)
+	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
