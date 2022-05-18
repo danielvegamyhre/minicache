@@ -1,10 +1,4 @@
-// This package defines a cache server with the following features:
-// - REST API endpoints client get/put operations
-// - inter-node communciation via gRPC secured with mTLS
-// - fault tolerance via single-leader asynchronous replication
-// - leader election via Bully Algorithm
-// - vector clocks used for resolving conflicts
-// - eventual consistency guarantee
+// This package defines a LRU cache server
 package server
 
 import (
