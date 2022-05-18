@@ -171,7 +171,7 @@ You will need to define 1 or more initial "genesis" nodes in a JSON config file,
 
 Here are a few working examples, it is very straight-forward:
 - Running a few cache servers on localhost with mTLS [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) 
-- Running a few cache servers in Docker containers with mTLS [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) 
+- Running a few cache servers in Docker containers with mTLS [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) (and the corresponding [docker-compose.yml](https://github.com/malwaredllc/minicache/blob/main/docker-compose.yml)).
 - Running a few cache servers on localhost with TLS disabled: [nodes-local-insecure.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-insecure.json) 
 
 These genesis nodes are the original nodes of the cluster, which any new nodes created later on will attempt to contact in order to dynamically register themselves with the cluster. As long as at least 1 of these initial nodes is online, any arbitrary number of new nodes can be spun up (e.g. launching more cache server containers from an image) without defining them in a config file, rebuilding the image etc. 
