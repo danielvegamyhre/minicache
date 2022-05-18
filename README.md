@@ -328,12 +328,5 @@ In the example below:
 ---------------
 
 ## Contributing
+
 Feel free to take a look at some of the issues and feature requests [here](https://github.com/malwaredllc/minicache/issues) and submit a pull-request.
-
-
-- Make using TLS optional
-- TLS support for REST API
-- Move to Raft election algorithm instead of Bully algorithm
-- Improve performance of REST API
-- Improve code quality and project organization
-- Documentation
