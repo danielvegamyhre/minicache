@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	RELATIVE_CONFIG_PATH      = "configs/nodes-local.json"
+	RELATIVE_CONFIG_PATH      = "configs/nodes-local-with-mTLS.json"
 	RELATIVE_CONFIG_PATH_HTTP = "configs/nodes-local-insecure.json"
 	RELATIVE_CLIENT_CERT_DIR  = "certs"
 )

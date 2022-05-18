@@ -104,6 +104,7 @@ func NewCacheServer(capacity int, config_file string, verbose bool, node_id stri
 	}
 
 	// set up gin router
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
 
@@ -425,7 +426,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, i
 		)
 
 		// run gRPC server
-		log.Printf("Running gRPC server on port %d...", nodeInfo.GrpcPort)
+		log.Printf("Node %s running gRPC server on port %d...", nodeInfo.Id, nodeInfo.GrpcPort)
 		go grpc_server.Serve(listener)
 
 		// register node with cluster
@@ -438,7 +439,7 @@ func CreateAndRunAllFromConfig(capacity int, config_file string, verbose bool, i
 		go cache_server.StartLeaderHeartbeatMonitor()
 
 		// run HTTP server
-		log.Printf("Running REST API server on port %d...", nodeInfo.RestPort)
+		log.Printf("Node %s running REST API server on port %d...", nodeInfo.Id, nodeInfo.RestPort)
 		http_server := cache_server.RunAndReturnHttpServer(int(nodeInfo.RestPort))
 
 		components = append(components, ServerComponents{GrpcServer: grpc_server, HttpServer: http_server})

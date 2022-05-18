@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	RELATIVE_CONFIG_PATH = "../../configs/nodes-docker.json"
+	RELATIVE_CONFIG_PATH = "../../configs/nodes-docker-with-mTLS.json"
 	RELATIVE_CLIENT_CERT_DIR = "../../certs"
 )
 
@@ -17,8 +17,6 @@ const (
 // 10 goroutines make 10k requests each via REST API. Count cache misses.
 func Test10kConcurrentRestApiPuts(t *testing.T) {
 	// start servers
-	// capacity := 100
-	// verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
@@ -59,8 +57,6 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 // 10 goroutines make 10k requests each vi gRPC. Count cache misses.
 func Test10kConcurrentGrpcPuts(t *testing.T) {
 	// start servers
-	// capacity := 100
-	// verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
