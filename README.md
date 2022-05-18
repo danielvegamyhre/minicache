@@ -33,7 +33,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go)
 - [Set Up and Usage](https://github.com/malwaredllc/minicache#set-up-and-usage)
 	- [Create/update node configuration file](https://github.com/malwaredllc/minicache#1-createupdate-node-configuration-file)
-	- [Enabling/Disabling TLS](https://github.com/malwaredllc/minicache#2-enablingdisabling-tls)
+	- [Enabling/Disabling TLS](https://github.com/malwaredllc/<minicache id="2-enablingdisabling-tls"></minicache>)
 	- [Generating TLS certificates](https://github.com/malwaredllc/minicache#3-generating-tls-certificates)
 - [Examples](https://github.com/malwaredllc/minicache#examples)
 	- [Running a distributed cache with Docker Compose](https://github.com/malwaredllc/minicache#example-1-run-distributed-cache-using-docker-containers)
@@ -167,7 +167,12 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 
 ### 1. Create/update node configuration file
 
-You will need to define 1 or more initial "genesis" nodes in a JSON config file (see [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) or [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) for working examples). 
+You will need to define 1 or more initial "genesis" nodes in a JSON config file, along with settings enabling/disabling TLS.
+
+Here are a few working examples, it is very straight-forward:
+- Running a few cache servers on localhost with mTLS [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) 
+- Running a few cache servers in Docker containers with mTLS [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) 
+- Running a few cache servers on localhost with TLS disabled: [nodes-local-insecure.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-insecure.json) 
 
 These genesis nodes are the original nodes of the cluster, which any new nodes created later on will attempt to contact in order to dynamically register themselves with the cluster. As long as at least 1 of these initial nodes is online, any arbitrary number of new nodes can be spun up (e.g. launching more cache server containers from an image) without defining them in a config file, rebuilding the image etc. 
 
