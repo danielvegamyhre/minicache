@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	CONFIG_FILE = "../configs/nodes-docker.json"
+	CONFIG_FILE = "../configs/nodes-docker-with-mTLS.json"
 )
 
 func TestAddNode(t *testing.T) {
