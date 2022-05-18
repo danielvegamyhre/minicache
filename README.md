@@ -83,6 +83,27 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - **Processor**: 2.4 GHz Intel Core i5
 - **Memory**: 8 GB 1600 MHz DDR3 
 
+### Performance test output
+```
+$ GIN_MODE=release sudo go test -v main_test.go 
+
+=== RUN   Test10kConcurrentGrpcPuts
+    main_test.go:60: Time to complete 10k puts via gRPC API: 521.057551ms
+    main_test.go:61: Cache misses: 0/10,000 (0.000000%)
+--- PASS: Test10kConcurrentGrpcPuts (3.85s)
+
+=== RUN   Test10kConcurrentRestApiPuts
+    main_test.go:118: Time to complete 10k puts via REST: 2.596501161s
+    main_test.go:119: Cache misses: 0/10,000 (0.000000%)
+--- PASS: Test10kConcurrentRestApiPuts (3.11s)
+
+=== RUN   Test10kConcurrentRestApiPutsInsecure
+    main_test.go:175: Time to complete 10k puts via REST: 7.675285188s
+    main_test.go:176: Cache misses: 0/10,000 (0.000000%)
+--- PASS: Test10kConcurrentRestApiPutsInsecure (10.72s)
+```
+
+
 ### 1. LRU Cache implementation ran directly by a test program: 
 
 **Test**: 10 million puts calling a LRU cache with capacity of 10,000 directly in memory:
@@ -135,7 +156,7 @@ $ go test -v main_test.go
 ### 2. Integration tests
 Run the integration tests with the command `go test -v main_test.go`, which performs the following steps:
 
-1. Spins up multiple cache server instances locally on different ports (see [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) config file)
+1. Spins up multiple cache server instances locally on different ports (see [nodes-local-with-mTLS.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-with-mTLS.json) config file)
 2. Creates cache client
 3. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via REST API endpoint
 4. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via gRPC calls
@@ -170,8 +191,8 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 You will need to define 1 or more initial "genesis" nodes in a JSON config file, along with settings enabling/disabling TLS.
 
 Here are a few working examples, it is very straight-forward:
-- Running a few cache servers on localhost with mTLS [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) 
-- Running a few cache servers in Docker containers with mTLS [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) (and the corresponding [docker-compose.yml](https://github.com/malwaredllc/minicache/blob/main/docker-compose.yml)).
+- Running a few cache servers on localhost with mTLS [nodes-local-with-mTLS.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-with-mTLS.json) 
+- Running a few cache servers in Docker containers with mTLS [nodes-docker-with-mTLS.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker-with-mTLS.json) (and the corresponding [docker-compose.yml](https://github.com/malwaredllc/minicache/blob/main/docker-compose.yml)).
 - Running a few cache servers on localhost with TLS disabled: [nodes-local-insecure.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-insecure.json) 
 
 These genesis nodes are the original nodes of the cluster, which any new nodes created later on will attempt to contact in order to dynamically register themselves with the cluster. As long as at least 1 of these initial nodes is online, any arbitrary number of new nodes can be spun up (e.g. launching more cache server containers from an image) without defining them in a config file, rebuilding the image etc. 
@@ -208,7 +229,7 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 
 1. Run `docker-compose build` from the project root directory to build the Docker images.
 
-2. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
+2. Run `docker-compose up` to spin up all of the containers defined in the `docker-compose.yml` file. By default the config file defines 4 cache server instances, 3 of which are the initial nodes defined in the `configs/nodes-docker-with-mTLS.json` config file, and 1 of which is an extra server node which dynamically adds itself to the cluster, in order to demonstrate this functionality.
 
 3. Run `docker build -t cacheclient -f Dockerfile.client .` from the project root directory to build a Docker image for the client.
 
@@ -248,7 +269,7 @@ In the example below:
 
 ### Example 3: Starting a Single Cache Server
 
-From [main.go](https://github.com/malwaredllc/minicache/blob/main/main.go):
+From [main.go](https://github.com/malwaredllc/minicache/blob/main/main.go)
 
 ```go
 func main() {
@@ -294,7 +315,7 @@ func main() {
 
 	// run HTTP server
 	cache_server.LogInfoLevel(fmt.Sprintf("Running REST API server on port %d...", *rest_port))
-	http_server := cache_server.RunAndReturnHttpServer(*rest_port)
+	http_server := cache_server.RunAndReturnHTTPServer(*rest_port)
 
 	// set up shutdown handler and block until sigint or sigterm received
 	c := make(chan os.Signal, 1)

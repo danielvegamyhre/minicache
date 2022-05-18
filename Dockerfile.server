@@ -10,4 +10,4 @@ COPY . .
 
 RUN go build
 
-CMD ["./minicache","-config","configs/nodes-docker.json","-capacity","100","-verbose"]
+CMD ["./minicache","-config","configs/nodes-docker-with-mTLS.json","-capacity","100","-verbose"]
