@@ -20,11 +20,13 @@ const (
 // 10 goroutines make 10k requests each via REST API. Count cache misses.
 func Test10kConcurrentRestApiPuts(t *testing.T) {
 	// start servers
+	insecure := false
+	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
 	// start client
-	c := NewClientWrapper(abs_cert_dir, abs_config_path)
+	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	c.StartClusterConfigWatcher()
 
 	var wg sync.WaitGroup
@@ -60,11 +62,13 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 // 10 goroutines make 10k requests each vi gRPC. Count cache misses.
 func Test10kConcurrentGrpcPuts(t *testing.T) {
 	// start servers
+	insecure := false
+	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
 	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 
 	// start client
-	c := NewClientWrapper(abs_cert_dir, abs_config_path)
+	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	c.StartClusterConfigWatcher()
 
 

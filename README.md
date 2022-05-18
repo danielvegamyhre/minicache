@@ -248,14 +248,18 @@ In the example below:
 
 ### Example 3: Starting a Single Cache Server
 
+From [main.go](https://github.com/malwaredllc/minicache/blob/main/main.go):
+
 ```go
 func main() {
 	// parse arguments
 	grpc_port := flag.Int("grpc-port", 5005, "port number for gRPC server to listen on")
-	capacity := flag.Int("capacity", 2, "capacity of LRU cache")
-	verbose := flag.Bool("verbose", false, "log events to terminal")
-	config_file := flag.String("config", "", "filename of JSON config file with node info")
+	capacity := flag.Int("capacity", 1000, "capacity of LRU cache")
+	client_auth := flag.Bool("client-auth", true, "require client authentication (used for mTLS)")
+	https_enabled := flag.Bool("https-enabled", true, "enable HTTPS for server-server and client-server communication. Requires TLS certificates in /certs directory.")
+	config_file := flag.String("config", "", "filename of JSON config file with the info for initial nodes")
 	rest_port := flag.Int("rest-port", 8080, "enable REST API for client requests, instead of just gRPC")
+	verbose := flag.Bool("verbose", false, "log events to terminal")
 
 	flag.Parse()
 
@@ -266,10 +270,17 @@ func main() {
 	}
 
 	// get new grpc id server
-	grpc_server, cache_server := server.NewCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC)
+	grpc_server, cache_server := server.NewCacheServer(
+		*capacity,
+		*config_file,
+		*verbose,
+		server.DYNAMIC,
+		*https_enabled,
+		*client_auth,
+	)
 
 	// run gRPC server
-	log.Printf("Running gRPC server on port %d...", *grpc_port)
+	cache_server.LogInfoLevel(fmt.Sprintf("Running gRPC server on port %d...", *grpc_port))
 	go grpc_server.Serve(listener)
 
 	// register node with cluster
@@ -282,7 +293,7 @@ func main() {
 	go cache_server.StartLeaderHeartbeatMonitor()
 
 	// run HTTP server
-	log.Printf("Running REST API server on port %d...", *rest_port)
+	cache_server.LogInfoLevel(fmt.Sprintf("Running REST API server on port %d...", *rest_port))
 	http_server := cache_server.RunAndReturnHttpServer(*rest_port)
 
 	// set up shutdown handler and block until sigint or sigterm received
@@ -291,15 +302,15 @@ func main() {
 	go func() {
 		<-c
 
-		log.Printf("Shutting down gRPC server...")
+		cache_server.LogInfoLevel("Shutting down gRPC server...")
 		grpc_server.Stop()
 
-		log.Printf("Shutting down HTTP server...")
+		cache_server.LogInfoLevel("Shutting down HTTP server...")
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
 		if err := http_server.Shutdown(ctx); err != nil {
-			log.Printf("Http server shutdown error: %s", err)
+			cache_server.LogInfoLevel("Http server shutdown error: %s", err)
 		}
 		os.Exit(0)
 	}()
@@ -317,11 +328,15 @@ In the example below:
 
 ```go
 	// start client
-	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path)
+	c := cache_client.NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	c.StartClusterConfigWatcher()
+
 	...
+
 	c.Put(key, value)
+
 	...
+
 	val := c.Get(key)
 ```
 

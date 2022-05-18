@@ -20,3 +20,6 @@ minicache
 # private keys
 *.pem
 *.srl
+
+*.log
+*.err

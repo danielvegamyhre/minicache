@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
+	"go.uber.org/zap"
 )
 
 type Payload struct {
@@ -30,123 +30,31 @@ type Payload struct {
 type ClientWrapper struct {
 	Config  nodelib.NodesConfig
 	Ring    *ring.Ring
+	Logger  *zap.SugaredLogger
 	CertDir string
 }
 
-// Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
-func (c *ClientWrapper) StartClusterConfigWatcher(shutdown_chan <-chan bool) {
-	go func() {
-		// get cluster config every 1 second until shutdown signal received
-		for {
-			select {
-				case <-shutdown_chan:
-					return
-				case <-time.After(time.Second):
-					c.fetchClusterConfig()
-			}
-		}
-	}()
-}
-
-func (c *ClientWrapper) fetchClusterConfig() {
-	// ask random nodes who the leader until we get a response.
-	// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
-	var leader *nodelib.Node
-	attempted := make(map[string]bool)
-	for {
-		randnode := nodelib.GetRandomNode(c.Ring.Nodes)
-
-		// if all nodes are unavailable, throw error
-		if len(attempted) == len(c.Ring.Nodes) {
-			log.Fatalf("error: unable to connect to any nodes")
-		}
-
-		// skip attempted nodes
-		if _, ok := attempted[randnode.Id]; ok {
-			log.Printf("Skipping visited node %s...", randnode.Id)
-			continue
-		}
-
-		// mark visited and request leader
-		attempted[randnode.Id] = true
-
-		// skip node we can't connect to
-		client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
-		if err != nil {
-			log.Printf("NewCacheClient failed %s...", err)
-			continue
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		res, err := client.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
-		if err != nil {
-			log.Printf("GetLeader failed %s...", err)
-			continue
-		}
-
-		leader = c.Config.Nodes[res.Id]
-		break
-	}
-
-	if leader == nil {
-		return
-	}
-
-	// get cluster config from current leader
-	req := pb.ClusterConfigRequest{CallerNodeId: "client"}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	// restart process if we can't connect to leader
-	client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort), c.Config.EnableHttps)
-	if err != nil {
-		return
-	}
-
-	res, err := client.GetClusterConfig(ctx, &req)
-	if err != nil {
-		log.Printf("error getting cluster config from node %s: %v", leader.Id, err)
-		return
-	}
-
-	// create hashmap of online node IDs to find missing node in constant time
-	cluster_nodes := make(map[string]bool)
-	for _, nodecfg := range res.Nodes {
-		cluster_nodes[nodecfg.Id] = true
-	}
-
-	// remove missing nodes from ring
-	for _, node := range c.Config.Nodes {
-		if _, ok := cluster_nodes[node.Id]; !ok {
-			log.Printf("Removing node %s from ring", node.Id)
-			delete(c.Config.Nodes, node.Id)
-			c.Ring.RemoveNode(node.Id)
-		}
-	}
-
-	// add new nodes to ring
-	for _, nodecfg := range res.Nodes {
-		if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
-			log.Printf("Adding node %s to ring", nodecfg.Id)
-			c.Config.Nodes[nodecfg.Id] = nodelib.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-			c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
-		}
-	}
-}
-
 // Create new Client struct instance and sets up node ring with consistent hashing
-func NewClientWrapper(cert_dir string, config_file string, insecure bool) *ClientWrapper {
+func NewClientWrapper(cert_dir string, config_file string, insecure bool, verbose bool) *ClientWrapper {
+
 	// get initial nodes from config file and add them to the ring
 	init_nodes_config := nodelib.LoadNodesConfig(config_file)
+
+	// set up logging
+	logger := GetSugaredZapLogger(
+				init_nodes_config.ClientLogfile, 
+				init_nodes_config.ClientErrfile, 
+				verbose,
+			  )
+
+	// set up consistent hashing ring and create grpc clients to active nodes
 	ring := ring.NewRing()
 	var cluster_config []*pb.Node
 
 	for _, node := range init_nodes_config.Nodes {
 		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), init_nodes_config.EnableHttps)
 		if err != nil {
-			log.Printf("error: %v", err)
+			logger.Infof("error: %v", err)
 			continue
 		}
 		node.SetGrpcClient(c)
@@ -157,14 +65,14 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 
 		res, err := c.GetClusterConfig(ctx, &pb.ClusterConfigRequest{CallerNodeId: "client"})
 		if err != nil {
-			log.Printf("error getting cluster config form node %s: %v", node.Id, err)
+			logger.Infof("error getting cluster config from node %s: %v", node.Id, err)
 			continue
 		}
 		cluster_config = res.Nodes
 		break
 	}
 
-	log.Printf("Client received initial cluster config: %v", cluster_config)
+	logger.Infof("Client received initial cluster config: %v", cluster_config)
 
 	// create config map from ring
 	config_map := make(map[string]*nodelib.Node)
@@ -178,7 +86,7 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 		// attempt to create client
 		c, err := NewCacheClient(cert_dir, node.Host, int(node.GrpcPort), init_nodes_config.EnableHttps)
 		if err != nil {
-			log.Printf("error: %v", err)
+			logger.Infof("error: %v", err)
 			continue
 		}
 		config_map[node.Id].SetGrpcClient(c)
@@ -188,7 +96,8 @@ func NewClientWrapper(cert_dir string, config_file string, insecure bool) *Clien
 		EnableHttps: init_nodes_config.EnableHttps, 
 		EnableClientAuth: init_nodes_config.EnableClientAuth,
 	}
-	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir}
+
+	return &ClientWrapper{Config: config, Ring: ring, CertDir: cert_dir, Logger: logger}
 }
 
 // Utility funciton to get a new Cache Client which uses gRPC secured with mTLS
@@ -206,7 +115,7 @@ func NewCacheClient(cert_dir string, server_host string, server_port int, enable
 		// set up TLS
 		creds, err := LoadTLSCredentials(cert_dir)
 		if err != nil {
-			log.Fatalf("failed to create credentials: %v", err)
+			panic(fmt.Sprintf("failed to load TLS credentials: %v", err))
 		}
 		tlsConnectionOption = grpc.WithTransportCredentials(creds)
 	}
@@ -362,4 +271,138 @@ func LoadTLSCredentials(cert_dir string) (credentials.TransportCredentials, erro
 	}
 
 	return credentials.NewTLS(config), nil
+}
+
+
+// Set up logger at the specified verbosity level
+func GetSugaredZapLogger(log_file string, err_file string, verbose bool) *zap.SugaredLogger {
+	var level zap.AtomicLevel
+	output_paths := []string{log_file}
+	error_paths := []string{err_file}
+
+	// also log to console in verbose mode
+	if verbose {
+		level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		output_paths = append(output_paths, "stdout")
+	} else {
+		level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+		error_paths = append(output_paths, "stderr")
+	}
+	cfg := zap.Config{
+		Level:            level,
+		Development:      true,
+		Encoding:         "console",
+		EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
+		OutputPaths:      output_paths,
+		ErrorOutputPaths: error_paths,
+	}
+	logger, err := cfg.Build()
+	if err != nil {
+		panic(err)
+	}
+	return logger.Sugar()
+}
+
+
+// Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
+func (c *ClientWrapper) StartClusterConfigWatcher(shutdown_chan <-chan bool) {
+	go func() {
+		// get cluster config every 1 second until shutdown signal received
+		for {
+			select {
+				case <-shutdown_chan:
+					return
+				case <-time.After(time.Second):
+					c.fetchClusterConfig()
+			}
+		}
+	}()
+}
+
+func (c *ClientWrapper) fetchClusterConfig() {
+	// ask random nodes who the leader until we get a response.
+	// we want each client to ask random nodes, not fixed, to avoid overloading one with leader requests
+	var leader *nodelib.Node
+	attempted := make(map[string]bool)
+	for {
+		randnode := nodelib.GetRandomNode(c.Ring.Nodes)
+
+		// if all nodes are unavailable, throw error
+		if len(attempted) == len(c.Ring.Nodes) {
+			c.Logger.Fatalf("error: unable to connect to any nodes")
+		}
+
+		// skip attempted nodes
+		if _, ok := attempted[randnode.Id]; ok {
+			c.Logger.Infof("Skipping visited node %s...", randnode.Id)
+			continue
+		}
+
+		// mark visited and request leader
+		attempted[randnode.Id] = true
+
+		// skip node we can't connect to
+		client, err := NewCacheClient(c.CertDir, randnode.Host, int(randnode.GrpcPort), c.Config.EnableHttps)
+		if err != nil {
+			c.Logger.Infof("NewCacheClient failed %s...", err)
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		res, err := client.GetLeader(ctx, &pb.LeaderRequest{Caller: "client"})
+		if err != nil {
+			c.Logger.Infof("GetLeader failed %s...", err)
+			continue
+		}
+
+		leader = c.Config.Nodes[res.Id]
+		break
+	}
+
+	if leader == nil {
+		return
+	}
+
+	// get cluster config from current leader
+	req := pb.ClusterConfigRequest{CallerNodeId: "client"}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	// restart process if we can't connect to leader
+	client, err := NewCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort), c.Config.EnableHttps)
+	if err != nil {
+		return
+	}
+
+	res, err := client.GetClusterConfig(ctx, &req)
+	if err != nil {
+		c.Logger.Infof("error getting cluster config from node %s: %v", leader.Id, err)
+		return
+	}
+
+	// create hashmap of online node IDs to find missing node in constant time
+	cluster_nodes := make(map[string]bool)
+	for _, nodecfg := range res.Nodes {
+		cluster_nodes[nodecfg.Id] = true
+	}
+
+	// remove missing nodes from ring
+	for _, node := range c.Config.Nodes {
+		if _, ok := cluster_nodes[node.Id]; !ok {
+			c.Logger.Infof("Removing node %s from ring", node.Id)
+			delete(c.Config.Nodes, node.Id)
+			c.Ring.RemoveNode(node.Id)
+		}
+	}
+
+	// add new nodes to ring
+	for _, nodecfg := range res.Nodes {
+		if _, ok := c.Config.Nodes[nodecfg.Id]; !ok {
+			c.Logger.Infof("Adding node %s to ring", nodecfg.Id)
+			c.Config.Nodes[nodecfg.Id] = nodelib.NewNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+			c.Ring.AddNode(nodecfg.Id, nodecfg.Host, nodecfg.RestPort, nodecfg.GrpcPort)
+		}
+	}
 }
