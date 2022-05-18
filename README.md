@@ -7,7 +7,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - Dynamic node discovery enabling arbitrary cluster sizes
 - Distributed leader election via [Bully algorithm](https://en.wikipedia.org/wiki/Bully_algorithm) and leader heartbeat monitors which ensure no single-point of failure
 - Both HTTP/gRPC interfaces for gets/puts
-- [mTLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/) secured communication (gRPC only for now, adding to HTTP/REST API soon)
+- Supports [mTLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/) secured communication (gRPC only for now, adding to HTTP/REST API soon)
 - Dockerfiles to support containerized deployments
 
 
@@ -21,7 +21,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 	- [Distributed leader election algorithm](https://github.com/malwaredllc/minicache#distributed-leader-election-algorithm)
 	- [No single point of failure](https://github.com/malwaredllc/minicache#no-single-point-of-failure)
 	- [Support for both HTTP/gRPC](https://github.com/malwaredllc/minicache#supports-both-rest-api-and-grpc)
-	- [mTLS for maximum security](https://github.com/malwaredllc/minicache#mtls-for-maximum-security)
+	- [Supports mTLS for maximum security](https://github.com/malwaredllc/minicache#mtls-for-maximum-security)
 - [Performance/Benchmarking](https://github.com/malwaredllc/minicache#performance)
 	- [LRU Cache direct usage performance](https://github.com/malwaredllc/minicache#1-lru-cache-implemtation-ran-directly-by-a-test-program)
 	- [Local distributed cache performance](https://github.com/malwaredllc/minicache#2-distributed-cache-running-locally-with-storage-via-grpc-calls-over-local-network)
@@ -32,6 +32,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 	- [Integration testing](https://github.com/malwaredllc/minicache#2-integration-tests)
 	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go)
 - [Set Up and Usage](https://github.com/malwaredllc/minicache#set-up-and-usage)
+	- [Enabling/Disabling TLS](https://github.com/malwaredllc/minicache#set-up-and-usage)
 - [Examples](https://github.com/malwaredllc/minicache#examples)
 	- [Running a distributed cache with Docker Compose](https://github.com/malwaredllc/minicache#example-1-run-distributed-cache-using-docker-containers)
 	- [Running all cache servers defined in a config file](https://github.com/malwaredllc/minicache#example-2-starting-all-cache-servers-defined-in-config-file)
@@ -162,7 +163,7 @@ Example of stopping and restarting cacheserver1 while integration tests are runn
 
 ## Set Up and Usage
 
-### 1. Define initial nodes
+### 1. Create/update node configuration file
 
 You will need to define 1 or more initial "genesis" nodes in a JSON config file (see [nodes-local.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local.json) or [nodes-docker.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker.json) for working examples). 
 
@@ -170,9 +171,18 @@ These genesis nodes are the original nodes of the cluster, which any new nodes c
 
 Therefore it is recommended to define at least 3 initial nodes to support fault-tolerance to a reasonable level.
 
+### 2. Enabling/Disabling TLS
 
-### 2. Generate TLS certificates
-Before using minicache you will need to generate TLS certificates by performing the following steps:
+In the node configuration file:
+
+- **To disable TLS** set `enable_https: false`
+- **To enable TLS** set `enable_https: true`
+- **To enable mTLS** set `enable_https: true` and `enable_client_auth: true`
+
+
+### 3. Generating TLS certificates
+
+If you want to enable mTLS, you will need to generate TLS certificates by performing the following steps:
 
 - Update config files `certs/client-ext.cnf` and `certs/server-ext.cnf` to include any hostnames and/or IPs of any servers you plan on running. If you plan on using Docker containers, the DNS hostnames should match those of the docker containers defined in `docker-compose.yml`. By default, the following hostnames and IPs are defined in the config files (note the hostnames match those defined in `docker-compose.yml`):
 
@@ -188,8 +198,6 @@ subjectAltName = DNS:localhost,DNS:cacheserver0,DNS:cacheserver1,DNS:cacheserver
 ## Examples
 
 ### Example 1: Run Distributed Cache Using Docker Containers
-
-**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
 1. Run `docker-compose build` from the project root directory to build the Docker images.
 
@@ -295,8 +303,6 @@ func main() {
 ```
 
 ### Example 4: Creating and Using a Cache Client
-
-**NOTE**: Make sure you've generated TLS certificates by following the steps [here](https://github.com/malwaredllc/minicache#usage)
 
 In the example below:
 - `abs_cert_dir` is the directory containing TLS certificates you generated [here](https://github.com/malwaredllc/minicache#set-up-and-usage)
