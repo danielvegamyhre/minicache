@@ -275,11 +275,13 @@ func (c *ClientWrapper) Put(key string, value string) error {
 
 	// check response
 	res, err := new(http.Client).Do(req)
-	defer res.Body.Close()
 
 	if err != nil {
 		return errors.New(fmt.Sprintf("error sending POST request: %s", err))
 	}
+
+	defer res.Body.Close()
+
 	return nil
 }
 
