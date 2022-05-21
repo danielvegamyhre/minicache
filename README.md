@@ -7,7 +7,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - Dynamic node discovery enabling arbitrary cluster sizes
 - Distributed leader election via [Bully algorithm](https://en.wikipedia.org/wiki/Bully_algorithm) and leader heartbeat monitors which ensure no single-point of failure
 - Both HTTP/gRPC interfaces for gets/puts
-- Supports [mTLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/) secured communication (gRPC only for now, adding to HTTP/REST API soon)
+- Supports [mTLS](https://www.cloudflare.com/learning/access-management/what-is-mutual-tls/) secured communication
 - Dockerfiles to support containerized deployments
 
 
