@@ -30,7 +30,7 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 - [Testing](https://github.com/malwaredllc/minicache#testing)
 	- [Unit testing](https://github.com/malwaredllc/minicache#1-unit-tests)
 	- [Integration testing](https://github.com/malwaredllc/minicache#2-integration-tests)
-	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go)
+	- [Consistent Hashing and Fault-tolerance testing](https://github.com/malwaredllc/minicache/blob/main/lru/lru_test.go)
 - [Set Up and Usage](https://github.com/malwaredllc/minicache#set-up-and-usage)
 	- [Create/update node configuration file](https://github.com/malwaredllc/minicache#1-createupdate-node-configuration-file)
 	- [Enabling/Disabling TLS](https://github.com/malwaredllc/minicache#2-enablingdisabling-tls)
@@ -109,11 +109,11 @@ $ GIN_MODE=release sudo go test -v main_test.go
 **Test**: 10 million puts calling a LRU cache with capacity of 10,000 directly in memory:
 
 ```
-$ go test -v ./lru_cache
+$ go test -v ./lru
 
 === RUN   TestCacheWriteThroughput
-    lru_cache_test.go:19: Time to complete 10M puts: 3.869112083s
-    lru_cache_test.go:20: LRU Cache write throughput: 2584572.321887 puts/second
+    lru_test.go:19.go:19: Time to complete 10M puts: 3.869112083s
+    lru_test.go:20: LRU Cache write throughput: 2584572.321887 puts/second
 
 ```
 **Result**: 2.58 million puts/second
@@ -148,8 +148,8 @@ $ go test -v main_test.go
 ## Testing
 
 ### 1. Unit tests
-- LRU Cache implementation has exhaustive unit tests for correctness in all possible scenarios (see [lru_cache_test.go](https://github.com/malwaredllc/minicache/blob/main/lru_cache/lru_cache_test.go))
-- Run the unit tests with the command `go test -v ./lru_cache`
+- LRU Cache implementation has exhaustive unit tests for correctness in all possible scenarios (see [lru_test.go](https://github.com/malwaredllc/minicache/blob/main/lru/lru_test.go))
+- Run the unit tests with the command `go test -v ./lru`
 - Consistent hashing ring contains exhaustive unit tests for various scenarios (see [ring_test.go](https://github.com/malwaredllc/minicache/blob/main/ring/ring_test.go))
 - Run these unit tests with the command `go test -v ./ring`
 

@@ -49,4 +49,3 @@ services:
     environment: # Pass environment variables to the service
       GIN_MODE: release
       GODEBUG: x509sha1=1   
-
