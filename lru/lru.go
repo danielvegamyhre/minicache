@@ -1,6 +1,6 @@
 // LRU Cache implementation which uses a hashmap and doubly-linked list 
 // to achieve O(1) get/put operations and O(1) eviction.
-package lru_cache
+package lru
 
 import (
 	"sync"
@@ -27,16 +27,16 @@ type LruCache struct {
 
 // initialize and return new lru cache of specified capacity
 func NewLruCache(capacity int) LruCache {
-    lru_cache := LruCache{
+    lruCache := LruCache{
         cache:      make(map[string]*LLNode, capacity),
         head:       &LLNode{prev: nil, next: nil, key: "", val: ""},
         tail:       &LLNode{prev: nil, next: nil, key: "", val: ""},
         capacity:   capacity,
         size:       0,
     }
-    lru_cache.head.next = lru_cache.tail
-    lru_cache.tail.prev = lru_cache.head
-    return lru_cache
+    lruCache.head.next = lruCache.tail
+    lruCache.tail.prev = lruCache.head
+    return lruCache
 }
 
 

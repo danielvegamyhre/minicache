@@ -9,7 +9,7 @@ RUN go mod download && go mod verify
 
 COPY . .
 
-WORKDIR /usr/src/app/client/cache_client
+WORKDIR /usr/src/app/client/cacheClient
 ENV GODEBUG=x509sha1=1
 
 CMD ["go","test","-v"]
