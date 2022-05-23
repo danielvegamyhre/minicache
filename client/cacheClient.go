@@ -1,4 +1,4 @@
-package cacheClient
+package client
 
 import (
 	"bytes"

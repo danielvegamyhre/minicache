@@ -5,20 +5,21 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/malwaredllc/minicache/server"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/malwaredllc/minicache/server"
 )
 
 func main() {
 	// parse arguments
 	grpcPort := flag.Int("grpcPort", 5005, "port number for gRPC server to listen on")
 	capacity := flag.Int("capacity", 1000, "capacity of LRU cache")
-	clientAuth := flag.Bool("clientAuth", true, "require client authentication (used for mTLS)")
-	httpsEnabled := flag.Bool("httpsEnabled", true, "enable HTTPS for server-server and client-server communication. Requires TLS certificates in /certs directory.")
+	clientAuth := flag.Bool("enableclientAuth", true, "require client authentication (used for mTLS)")
+	httpsEnabled := flag.Bool("enableHttps", true, "enable HTTPS for server-server and client-server communication. Requires TLS certificates in /certs directory.")
 	configFile := flag.String("config", "", "filename of JSON config file with the info for initial nodes")
 	restPort := flag.Int("restPort", 8080, "enable REST API for client requests, instead of just gRPC")
 	verbose := flag.Bool("verbose", false, "log events to terminal")
