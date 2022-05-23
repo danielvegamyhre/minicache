@@ -27,7 +27,7 @@ jobs:
         ./gen.sh
 
     - name: Test LRU Cache
-      run: go test -v ./lru_cache
+      run: go test -v ./lru
       env:
         GODEBUG: x509sha1=1
 
