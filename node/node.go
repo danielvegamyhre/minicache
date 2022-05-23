@@ -3,37 +3,37 @@
 package node
 
 import (
-	"io/ioutil"
 	"encoding/json"
-	"os"
+	"hash/crc32"
+	"io/ioutil"
 	"log"
 	"math/rand"
-	"hash/crc32"
+	"os"
 	"time"
+
 	"github.com/malwaredllc/minicache/pb"
 )
-
 
 // NodesConfig struct holds info about all server nodes in the network
 type NodesConfig struct {
 	Nodes            map[string]*Node `json:"nodes"`
 	EnableClientAuth bool             `json:"enable_client_auth"`
 	EnableHttps      bool             `json:"enable_https"`
-	ServerLogfile	 string 		  `json:"server_logfile"`
-	ServerErrfile	 string 		  `json:"server_errfile"`
-	ClientLogfile	 string 		  `json:"client_logfile"`
-	ClientErrfile	 string 		  `json:"client_errfile"`
+	ServerLogfile    string           `json:"server_logfile"`
+	ServerErrfile    string           `json:"server_errfile"`
+	ClientLogfile    string           `json:"client_logfile"`
+	ClientErrfile    string           `json:"client_errfile"`
 }
 
-// Node struct contains all info we need about a server node, as well as 
+// Node struct contains all info we need about a server node, as well as
 // a gRPC client to interact with it
 type Node struct {
-	Id 					string  `json:"id"`
-	Host 				string 	`json:"host"`
-	RestPort 			int32 	`json:"rest_port"`
-	GrpcPort 			int32 	`json:"grpc_port"`
-	HashId 				uint32
-	GrpcClient 			pb.CacheServiceClient
+	Id         string `json:"id"`
+	Host       string `json:"host"`
+	RestPort   int32  `json:"rest_port"`
+	GrpcPort   int32  `json:"grpc_port"`
+	HashId     uint32
+	GrpcClient pb.CacheServiceClient
 }
 
 func (n *Node) SetGrpcClient(c pb.CacheServiceClient) {
@@ -42,11 +42,11 @@ func (n *Node) SetGrpcClient(c pb.CacheServiceClient) {
 
 func NewNode(id string, host string, rest_port int32, grpc_port int32) *Node {
 	return &Node{
-		Id:    		 	id,
-		Host:			host,
-		RestPort: 		rest_port,
-		GrpcPort: 		grpc_port,	
-		HashId: 		HashId(id),
+		Id:       id,
+		Host:     host,
+		RestPort: rest_port,
+		GrpcPort: grpc_port,
+		HashId:   HashId(id),
 	}
 }
 
@@ -56,7 +56,6 @@ type Nodes []*Node
 func (n Nodes) Len() int           { return len(n) }
 func (n Nodes) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n Nodes) Less(i, j int) bool { return n[i].HashId < n[j].HashId }
-
 
 func HashId(key string) uint32 {
 	return crc32.ChecksumIEEE([]byte(key))
@@ -68,12 +67,12 @@ func LoadNodesConfig(configFile string) NodesConfig {
 
 	// set defaults
 	nodesConfig := NodesConfig{
-		EnableClientAuth: 	true, 
-		EnableHttps: 		true,
-		ServerLogfile: 		"minicache.log",
-		ServerErrfile: 		"minicache.err",
-		ClientLogfile: 		"minicache-client.log",
-		ClientErrfile: 		"minicache-client.err",
+		EnableClientAuth: true,
+		EnableHttps:      true,
+		ServerLogfile:    "minicache.log",
+		ServerErrfile:    "minicache.err",
+		ClientLogfile:    "minicache-client.log",
+		ClientErrfile:    "minicache-client.err",
 	}
 
 	_ = json.Unmarshal([]byte(file), &nodesConfig)
@@ -112,13 +111,12 @@ func GetRandomNode(nodes []*Node) *Node {
 	return nodes[randomIndex]
 }
 
-
 func randSeq(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	letters := []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-    b := make([]rune, n)
-    for i := range b {
-        b[i] = letters[rand.Intn(len(letters))]
-    }
-    return string(b)
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
