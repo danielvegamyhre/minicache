@@ -22,7 +22,7 @@
             "HashId": ""
         }
     },
-    "enable_https": true,
+    "enableHttps": true,
     "enableClientAuth": true,
     "serverLogFile": "minicache.log",
     "serverErrFile": "minicache.err",
