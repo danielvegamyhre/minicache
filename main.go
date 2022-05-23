@@ -17,8 +17,8 @@ func main() {
 	// parse arguments
 	grpc_port := flag.Int("grpc-port", 5005, "port number for gRPC server to listen on")
 	capacity := flag.Int("capacity", 1000, "capacity of LRU cache")
-	client_auth := flag.Bool("client-auth", true, "require client authentication (used for mTLS)")
-	https_enabled := flag.Bool("https-enabled", true, "enable HTTPS for server-server and client-server communication. Requires TLS certificates in /certs directory.")
+	client_auth := flag.Bool("-enable-client-auth", false, "require client authentication (used for mTLS)")
+	https_enabled := flag.Bool("enable-https", false, "enable HTTPS for server-server and client-server communication. Requires TLS certificates in /certs directory.")
 	config_file := flag.String("config", "", "filename of JSON config file with the info for initial nodes")
 	rest_port := flag.Int("rest-port", 8080, "enable REST API for client requests, instead of just gRPC")
 	verbose := flag.Bool("verbose", false, "log events to terminal")
