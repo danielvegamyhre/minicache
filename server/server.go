@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/malwaredllc/minicache/lru_cache"
+	"github.com/malwaredllc/minicache/lru"
 	"github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/pb"
 	"go.uber.org/zap"
@@ -38,7 +38,7 @@ const (
 
 type CacheServer struct {
 	router          *gin.Engine
-	cache           *lru_cache.LruCache
+	cache           *lru.LruCache
 	logger          *zap.SugaredLogger
 	nodesConfig    node.NodesConfig
 	leaderID       string
@@ -109,7 +109,7 @@ func NewCacheServer(capacity int, configFile string, verbose bool, nodeID string
 	router.Use(gin.Recovery())
 
 	// initialize LRU cache
-	lru := lru_cache.NewLruCache(capacity)
+	lru := lru.NewLruCache(capacity)
 
 	// create server instance
 	cacheServer := CacheServer{
