@@ -19,7 +19,7 @@ const (
 )
 
 // 10 goroutines make 10k requests each vi gRPC. Count cache misses.
-func Test10kConcurrentGrpcPuts(t *testing.T) {
+func Test10kGrpcPuts(t *testing.T) {
 	// start servers
 	capacity := 100
 	verbose := false
@@ -76,7 +76,7 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 }
 
 // 10 goroutines make 10k requests each via REST API. Count cache misses.
-func Test10kConcurrentRestApiPuts(t *testing.T) {
+func Test10kRestApiPuts(t *testing.T) {
 	// start servers
 	capacity := 100
 	verbose := false
@@ -133,7 +133,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 }
 
 // 10 goroutines make 10k requests each via REST API (but http). Count cache misses.
-func Test10kConcurrentRestApiPutsInsecure(t *testing.T) {
+func Test10kRestApiPutsInsecure(t *testing.T) {
 	// start servers
 	capacity := 100
 	verbose := false

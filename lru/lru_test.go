@@ -1,8 +1,8 @@
 package lru
 
 import (
-	"testing"
 	"strconv"
+	"testing"
 	"time"
 )
 
@@ -26,23 +26,23 @@ func TestCacheAllScenarios(t *testing.T) {
 	lru := NewLruCache(capacity)
 
 	// test standard put and get
-	lru.Put("1","1")
-	lru.Put("2","2")
+	lru.Put("1", "1")
+	lru.Put("2", "2")
 	actual, err := lru.Get("1")
 	expected := "1"
 	AssertEqualNoError(t, expected, actual, err)
 
 	// test eviction of 2
-	lru.Put("3","3")
+	lru.Put("3", "3")
 	actual, err = lru.Get("2")
 	expected = ""
 	AssertErrorNotNil(t, err)
 
 	// test eviction of 1
-	lru.Put("4","4")
+	lru.Put("4", "4")
 	actual, err = lru.Get("1")
 	expected = ""
-	AssertErrorNotNil(t, err)	
+	AssertErrorNotNil(t, err)
 
 	// test 3 still in cache
 	actual, err = lru.Get("3")
@@ -58,18 +58,18 @@ func TestCacheAllScenarios(t *testing.T) {
 func TestCache2(t *testing.T) {
 	// new LRU cache with capacity of 2
 	capacity := 2
-	lru := NewLruCache(capacity)	
+	lru := NewLruCache(capacity)
 
 	// test updating existing key/value pairs
-	lru.Put("2","1")
-	lru.Put("2","2")
+	lru.Put("2", "1")
+	lru.Put("2", "2")
 	actual, err := lru.Get("2")
 	expected := "2"
 	AssertEqualNoError(t, expected, actual, err)
 
 	// test eviction policy
-	lru.Put("1","1")
-	lru.Put("4","1")
+	lru.Put("1", "1")
+	lru.Put("4", "1")
 	_, err = lru.Get("2")
 	AssertErrorNotNil(t, err)
 }
@@ -77,7 +77,7 @@ func TestCache2(t *testing.T) {
 func TestCache3(t *testing.T) {
 	// new LRU cache with capacity of 105
 	capacity := 105
-	lru := NewLruCache(capacity)		
+	lru := NewLruCache(capacity)
 
 	// heavy duty test
 	lru.Put("33", "219")
@@ -1791,7 +1791,7 @@ func TestCache3(t *testing.T) {
 	AssertEqualNoError(t, expected, actual, err)
 	actual, err = lru.Get("107")
 	expected = "271"
-	AssertEqualNoError(t, expected, actual, err)	
+	AssertEqualNoError(t, expected, actual, err)
 }
 
 func AssertEqualNoError(t *testing.T, expected interface{}, actual interface{}, err error) {

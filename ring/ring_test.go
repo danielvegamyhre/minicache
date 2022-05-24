@@ -1,9 +1,9 @@
 package ring
 
 import (
-	"testing"
 	"github.com/malwaredllc/minicache/node"
 	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 const (

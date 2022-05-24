@@ -1,5 +1,5 @@
-// This package defines a LRU cache server which supports client-side consistent hashing, 
-// TLS (and mTLS), client access via both HTTP/gRPC, 
+// This package defines a LRU cache server which supports client-side consistent hashing,
+// TLS (and mTLS), client access via both HTTP/gRPC,
 package server
 
 import (
@@ -37,9 +37,9 @@ const (
 )
 
 type CacheServer struct {
-	router          *gin.Engine
-	cache           *lru.LruCache
-	logger          *zap.SugaredLogger
+	router         *gin.Engine
+	cache          *lru.LruCache
+	logger         *zap.SugaredLogger
 	nodesConfig    node.NodesConfig
 	leaderID       string
 	nodeID         string
@@ -48,7 +48,7 @@ type CacheServer struct {
 	httpsEnabled   bool
 	shutdownChan   chan bool
 	decisionChan   chan string
-	mutex           sync.RWMutex
+	mutex          sync.RWMutex
 	electionStatus bool
 	pb.UnimplementedCacheServiceServer
 }
@@ -77,10 +77,10 @@ func NewCacheServer(capacity int, configFile string, verbose bool, nodeID string
 
 	// set up logging
 	sugared_logger := GetSugaredZapLogger(
-						nodesConfig.ServerLogfile, 
-						nodesConfig.ServerErrfile, 
-						verbose,
-					  )
+		nodesConfig.ServerLogfile,
+		nodesConfig.ServerErrfile,
+		verbose,
+	)
 
 	// determine which node id we are and which group we are in
 	var finalNodeID string
@@ -113,9 +113,9 @@ func NewCacheServer(capacity int, configFile string, verbose bool, nodeID string
 
 	// create server instance
 	cacheServer := CacheServer{
-		router:        router,
-		cache:         &lru,
-		logger:        sugared_logger,
+		router:       router,
+		cache:        &lru,
+		logger:       sugared_logger,
 		nodesConfig:  nodesConfig,
 		nodeID:       finalNodeID,
 		leaderID:     NO_LEADER,
@@ -223,7 +223,6 @@ func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty
 	return &empty.Empty{}, nil
 }
 
-
 // Utility function to get a new Cache Client which uses gRPC secured with mTLS
 func (s *CacheServer) NewCacheClient(serverHost string, serverPort int) (pb.CacheServiceClient, error) {
 
@@ -319,10 +318,10 @@ func CreateAndRunAllFromConfig(capacity int, configFile string, verbose bool, in
 
 	// set up logging
 	logger := GetSugaredZapLogger(
-						config.ServerLogfile, 
-						config.ServerErrfile, 
-						verbose,
-					  )
+		config.ServerLogfile,
+		config.ServerErrfile,
+		verbose,
+	)
 
 	var components []ServerComponents
 
@@ -335,11 +334,11 @@ func CreateAndRunAllFromConfig(capacity int, configFile string, verbose bool, in
 
 		// get new grpc id server
 		grpcServer, cacheServer := NewCacheServer(
-			capacity, 
-			configFile, 
-			verbose, 
-			nodeInfo.Id, 
-			config.EnableHttps, 
+			capacity,
+			configFile,
+			verbose,
+			nodeInfo.Id,
+			config.EnableHttps,
 			config.EnableClientAuth,
 		)
 
@@ -364,7 +363,6 @@ func CreateAndRunAllFromConfig(capacity int, configFile string, verbose bool, in
 	}
 	return components
 }
-
 
 //Set up mutual TLS config
 func LoadTlsConfig(client_auth bool) (*tls.Config, error) {

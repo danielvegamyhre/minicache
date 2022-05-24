@@ -15,10 +15,10 @@ import (
 	nodelib "github.com/malwaredllc/minicache/node"
 	"github.com/malwaredllc/minicache/pb"
 	"github.com/malwaredllc/minicache/ring"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"go.uber.org/zap"
 )
 
 type Payload struct {
@@ -42,10 +42,10 @@ func NewClientWrapper(certDir string, configFile string, insecure bool, verbose 
 
 	// set up logging
 	logger := GetSugaredZapLogger(
-				initNodesConfig.ClientLogfile, 
-				initNodesConfig.ClientErrfile, 
-				verbose,
-			  )
+		initNodesConfig.ClientLogfile,
+		initNodesConfig.ClientErrfile,
+		verbose,
+	)
 
 	// set up consistent hashing ring and create grpc clients to active nodes
 	ring := ring.NewRing()
@@ -92,8 +92,8 @@ func NewClientWrapper(certDir string, configFile string, insecure bool, verbose 
 		configMap[node.Id].SetGrpcClient(c)
 	}
 	config := nodelib.NodesConfig{
-		Nodes: configMap, 
-		EnableHttps: initNodesConfig.EnableHttps, 
+		Nodes:            configMap,
+		EnableHttps:      initNodesConfig.EnableHttps,
 		EnableClientAuth: initNodesConfig.EnableClientAuth,
 	}
 
@@ -273,7 +273,6 @@ func LoadTLSCredentials(certDir string) (credentials.TransportCredentials, error
 	return credentials.NewTLS(config), nil
 }
 
-
 // Set up logger at the specified verbosity level
 func GetSugaredZapLogger(logFile string, errFile string, verbose bool) *zap.SugaredLogger {
 	var level zap.AtomicLevel
@@ -303,17 +302,16 @@ func GetSugaredZapLogger(logFile string, errFile string, verbose bool) *zap.Suga
 	return logger.Sugar()
 }
 
-
 // Checks cluster config every 5 seconds and updates ring with any changes. Runs in infinite loop.
 func (c *ClientWrapper) StartClusterConfigWatcher(shutdownChan <-chan bool) {
 	go func() {
 		// get cluster config every 1 second until shutdown signal received
 		for {
 			select {
-				case <-shutdownChan:
-					return
-				case <-time.After(time.Second):
-					c.fetchClusterConfig()
+			case <-shutdownChan:
+				return
+			case <-time.After(time.Second):
+				c.fetchClusterConfig()
 			}
 		}
 	}()

@@ -1,18 +1,17 @@
-
 package server
 
 import (
 	"context"
+	empty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/malwaredllc/minicache/pb"
 	"os"
 	"time"
-	"github.com/malwaredllc/minicache/pb"
-	empty "github.com/golang/protobuf/ptypes/empty"
 )
 
 const (
-	ELECTION_RUNNING = true
-	NO_ELECTION_RUNNING= false
-	NO_LEADER = "NO LEADER"
+	ELECTION_RUNNING    = true
+	NO_ELECTION_RUNNING = false
+	NO_LEADER           = "NO LEADER"
 )
 
 // Run an election using the Bully Algorithm (https://en.wikipedia.org/wiki/Bully_algorithm)
@@ -50,7 +49,7 @@ func (s *CacheServer) RunElection() {
 			s.logger.Infof("PID request to node %s failed", node.Id)
 			continue
 		}
-		
+
 		// if response has a higher PID (use node id as tie-breaker), we send it an election request and wait to receive the election winner announcement.
 		s.logger.Infof("Received PID %d from node %s (vs local PID %d on node %s)", res.Pid, node.Id, localPID, s.nodeID)
 		if (localPID < res.Pid) || (res.Pid == localPID && s.nodeID < node.Id) {
@@ -78,13 +77,13 @@ func (s *CacheServer) RunElection() {
 					s.leaderID = winner
 					s.logger.Infof("Received decision: Leader is node %s", s.leaderID)
 					s.electionStatus = NO_ELECTION_RUNNING
-					return	
+					return
 				}
-			case <-time.After(5*time.Second):
+			case <-time.After(5 * time.Second):
 				s.logger.Info("Timed out waiting for decision. Starting new election.")
 				s.RunElection()
 				s.electionStatus = NO_ELECTION_RUNNING
-				return 
+				return
 			}
 		}
 	}
@@ -101,7 +100,7 @@ func (s *CacheServer) RunElection() {
 
 // Announce new leader to all nodes
 func (s *CacheServer) AnnounceNewLeader(winner string) {
-	s.logger.Infof("Announcing node %s won election",  winner)
+	s.logger.Infof("Announcing node %s won election", winner)
 
 	// if no response from any higher node IDs, declare self the winner and announce to all
 	for _, node := range s.nodesConfig.Nodes {
@@ -128,17 +127,17 @@ func (s *CacheServer) AnnounceNewLeader(winner string) {
 
 // Returns current leader
 func (s *CacheServer) GetLeader(ctx context.Context, request *pb.LeaderRequest) (*pb.LeaderResponse, error) {
-	// while there is no leader, run election 
+	// while there is no leader, run election
 	for {
 		if s.leaderID != NO_LEADER {
 			break
 		}
 		s.RunElection()
-		
+
 		// if no leader was elected, wait 3 seconds then run another election
 		if s.leaderID == NO_LEADER {
 			s.logger.Info("No leader elected, waiting 3 seconds before trying again...")
-			time.Sleep(3*time.Second)
+			time.Sleep(3 * time.Second)
 		}
 	}
 	return &pb.LeaderResponse{Id: s.leaderID}, nil
@@ -149,10 +148,10 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 	// wait for decision to get leader
 	s.logger.Info("Leader heartbeat monitor starting...")
 
-    ticker := time.NewTicker(time.Second)
-    for {
+	ticker := time.NewTicker(time.Second)
+	for {
 		// run heartbeat check every 1 second
-        <-ticker.C
+		<-ticker.C
 
 		// case 1: we are a follower
 		if s.leaderID != s.nodeID {
@@ -170,7 +169,7 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 				continue
 			}
 
-		// case 2: we are the leader, so check for any dead nodes and remove them from cluster
+			// case 2: we are the leader, so check for any dead nodes and remove them from cluster
 		} else {
 			modified := false
 			for _, node := range s.nodesConfig.Nodes {
@@ -205,7 +204,7 @@ func (s *CacheServer) StartLeaderHeartbeatMonitor() {
 				s.updateClusterConfigInternal()
 			}
 		}
-    }
+	}
 }
 
 // Check if leader node is alive (3 second timeout)
@@ -245,7 +244,7 @@ func (s *CacheServer) IsLeaderAlive() bool {
 	return true
 }
 
-// gRPC handler for updating the leader after 
+// gRPC handler for updating the leader after
 func (s *CacheServer) UpdateLeader(ctx context.Context, request *pb.NewLeaderAnnouncement) (*pb.GenericResponse, error) {
 	s.logger.Infof("Received announcement leader is %s", request.LeaderId)
 	s.leaderID = request.LeaderId
@@ -259,7 +258,7 @@ func (s *CacheServer) GetHeartbeat(ctx context.Context, request *pb.HeartbeatReq
 	return &empty.Empty{}, nil
 }
 
-// gRPC handler that receives a request with the caller's PID and returns its own PID. 
+// gRPC handler that receives a request with the caller's PID and returns its own PID.
 // If the PID is higher than the caller PID, we take over the election process.
 func (s *CacheServer) GetPid(ctx context.Context, request *pb.PidRequest) (*pb.PidResponse, error) {
 	local_pid := int32(os.Getpid())

@@ -1,22 +1,21 @@
 package client
 
 import (
-	"testing"
+	"path/filepath"
 	"strconv"
 	"sync"
+	"testing"
 	"time"
-	"path/filepath"
 )
 
 const (
-	RELATIVE_CONFIG_PATH = "../configs/nodes-docker-with-mTLS.json"
+	RELATIVE_CONFIG_PATH     = "../configs/nodes-docker-with-mTLS.json"
 	RELATIVE_CLIENT_CERT_DIR = "../certs"
 )
 
-
 // 10 goroutines make 10k requests each via REST API. Count cache misses.
-func Test10kConcurrentRestApiPuts(t *testing.T) {
-    // set up parameters for client
+func Test10kRestApiPuts(t *testing.T) {
+	// set up parameters for client
 	insecure := false
 	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
@@ -30,7 +29,6 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
 	miss := 0.0
-
 
 	// start timer
 	start := time.Now()
@@ -49,7 +47,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 				}
 			}
 		}()
-	}	
+	}
 	wg.Wait()
 	elapsed := time.Since(start)
 
@@ -59,9 +57,8 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
 
-
 // 10 goroutines make 10k requests each vi gRPC. Count cache misses.
-func Test10kConcurrentGrpcPuts(t *testing.T) {
+func Test10kGrpcPuts(t *testing.T) {
 	// set up parameters for client
 	insecure := false
 	verbose := false
@@ -72,7 +69,6 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	// start client
 	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
 	c.StartClusterConfigWatcher(shutdown_chan)
-
 
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -94,7 +90,7 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 				}
 			}
 		}()
-	}	
+	}
 	wg.Wait()
 	elapsed := time.Since(start)
 
@@ -103,4 +99,3 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	t.Logf("Time to complete 10k puts via REST API: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
-
