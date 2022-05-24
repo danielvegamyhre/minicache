@@ -1,8 +1,5 @@
 package client
 
-// NOTE: BEFORE RUNNING THESE TESTS YOU MUST LAUNCH CACHE SERVERS USING DOCKER CONTAINERS
-// INSTRUCTIONS HERE: https://github.com/malwaredllc/minicache#example-1-run-distributed-cache-using-docker-containers
-
 import (
 	"testing"
 	"strconv"
@@ -12,14 +9,14 @@ import (
 )
 
 const (
-	RELATIVE_CONFIG_PATH = "../../configs/nodes-docker-with-mTLS.json"
-	RELATIVE_CLIENT_CERT_DIR = "../../certs"
+	RELATIVE_CONFIG_PATH = "../configs/nodes-docker-with-mTLS.json"
+	RELATIVE_CLIENT_CERT_DIR = "../certs"
 )
 
 
 // 10 goroutines make 10k requests each via REST API. Count cache misses.
 func Test10kConcurrentRestApiPuts(t *testing.T) {
-	// start servers
+    // set up parameters for client
 	insecure := false
 	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
@@ -65,7 +62,7 @@ func Test10kConcurrentRestApiPuts(t *testing.T) {
 
 // 10 goroutines make 10k requests each vi gRPC. Count cache misses.
 func Test10kConcurrentGrpcPuts(t *testing.T) {
-	// start servers
+	// set up parameters for client
 	insecure := false
 	verbose := false
 	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
@@ -106,3 +103,4 @@ func Test10kConcurrentGrpcPuts(t *testing.T) {
 	t.Logf("Time to complete 10k puts via REST API: %s", elapsed)
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
+
