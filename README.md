@@ -153,7 +153,8 @@ $ go test -v main_test.go
 - Consistent hashing ring contains exhaustive unit tests for various scenarios (see [ring_test.go](https://github.com/malwaredllc/minicache/blob/main/ring/ring_test.go))
 - Run these unit tests with the command `go test -v ./ring`
 
-### 2. Integration tests
+### 2. Integration tests (local)
+
 Run the integration tests with the command `go test -v main_test.go`, which performs the following steps:
 
 1. Spins up multiple cache server instances locally on different ports (see [nodes-local-with-mTLS.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-with-mTLS.json) config file)
@@ -161,8 +162,20 @@ Run the integration tests with the command `go test -v main_test.go`, which perf
 3. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via REST API endpoint
 4. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via gRPC calls
 5. After each test, displays % of cache misses (which in this case, is when the client is simply unable to store an item in the distributed cache)
+6. Repeats steps 1-5 using the [nodes-local-insecure.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-local-insecure.json) config file, to test the pure HTTP implementation (no TLS or mTLS). 
 
-### 3. Fault-tolerance testing
+### 3. Integration tests (Docker)
+
+If you have Docker and [Docker Compose](https://docs.docker.com/compose/) installed, you can run the test script `./docker-test.sh` which performs the following steps:
+
+1. Spins up multiple containerized cache server instances using Docker Compose (see [nodes-local-with-mTLS.json](https://github.com/malwaredllc/minicache/blob/main/configs/nodes-docker-with-mTLS.json) config file)
+2. Builds a Docker image for running the client & integration tests from Docker container
+3. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via REST API endpoint
+4. Runs 10 goroutines which each send 1000 requests to put items in the distributed cache via gRPC calls
+5. After each test, displays % of cache misses (which in this case, is when the client is simply unable to store an item in the distributed cache)
+6. Once the tests are complete, the Docker containers running the cache servers are stopped.
+
+### 4. Fault-tolerance testing
 
 A useful test is to to manually stop/restart arbitrary nodes in the cluster and observe the test log output to see the consistent hashing ring update in real time. 
 
