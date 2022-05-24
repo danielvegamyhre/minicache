@@ -18,12 +18,12 @@ func Test10kRestApiPuts(t *testing.T) {
 	// set up parameters for client
 	insecure := false
 	verbose := false
-	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
-	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+	absCertDir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
+	absConfigDir, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 	shutdown_chan := make(chan bool, 1)
 
 	// start client
-	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
+	c := NewClientWrapper(absCertDir, absConfigDir, insecure, verbose)
 	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
@@ -62,12 +62,12 @@ func Test10kGrpcPuts(t *testing.T) {
 	// set up parameters for client
 	insecure := false
 	verbose := false
-	abs_cert_dir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
-	abs_config_path, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
+	absCertDir, _ := filepath.Abs(RELATIVE_CLIENT_CERT_DIR)
+	absConfigDir, _ := filepath.Abs(RELATIVE_CONFIG_PATH)
 	shutdown_chan := make(chan bool, 1)
 
 	// start client
-	c := NewClientWrapper(abs_cert_dir, abs_config_path, insecure, verbose)
+	c := NewClientWrapper(absCertDir, absConfigDir, insecure, verbose)
 	c.StartClusterConfigWatcher(shutdown_chan)
 
 	var wg sync.WaitGroup
