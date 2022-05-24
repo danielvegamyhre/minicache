@@ -2,9 +2,9 @@ package ring
 
 import (
 	"errors"
+	"github.com/malwaredllc/minicache/node"
 	"sort"
 	"sync"
-	"github.com/malwaredllc/minicache/node"
 )
 
 var ErrNodeNotFound = errors.New("node not found")

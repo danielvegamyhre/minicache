@@ -87,20 +87,20 @@ Distributed cache implemented in Go. Like Redis but simpler. Features include:
 ```
 $ GIN_MODE=release sudo go test -v main_test.go 
 
-=== RUN   Test10kConcurrentGrpcPuts
+=== RUN   Test10kGrpcPuts
     main_test.go:60: Time to complete 10k puts via gRPC API: 521.057551ms
     main_test.go:61: Cache misses: 0/10,000 (0.000000%)
---- PASS: Test10kConcurrentGrpcPuts (3.85s)
+--- PASS: Test10kGrpcPuts (3.85s)
 
-=== RUN   Test10kConcurrentRestApiPuts
+=== RUN   Test10kRestApiPuts
     main_test.go:118: Time to complete 10k puts via REST: 2.596501161s
     main_test.go:119: Cache misses: 0/10,000 (0.000000%)
---- PASS: Test10kConcurrentRestApiPuts (3.11s)
+--- PASS: Test10kRestApiPuts (3.11s)
 
-=== RUN   Test10kConcurrentRestApiPutsInsecure
+=== RUN   Test10kRestApiPutsInsecure
     main_test.go:175: Time to complete 10k puts via REST: 7.675285188s
     main_test.go:176: Cache misses: 0/10,000 (0.000000%)
---- PASS: Test10kConcurrentRestApiPutsInsecure (10.72s)
+--- PASS: Test10kRestApiPutsInsecure (10.72s)
 ```
 
 

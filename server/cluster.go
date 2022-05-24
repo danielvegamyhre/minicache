@@ -1,19 +1,19 @@
 package server
 
 import (
-	"fmt"
 	"context"
-	"github.com/malwaredllc/minicache/pb"
-	"github.com/malwaredllc/minicache/node"
+	"fmt"
 	empty "github.com/golang/protobuf/ptypes/empty"
-	"google.golang.org/grpc/status"
+	"github.com/malwaredllc/minicache/node"
+	"github.com/malwaredllc/minicache/pb"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"time"
 )
 
-// gRPC handler for registering a new node with the cluster. 
+// gRPC handler for registering a new node with the cluster.
 // New nodes call this RPC on the leader when they come online.
-func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.Node) (*pb.GenericResponse, error) {	
+func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.Node) (*pb.GenericResponse, error) {
 	// if we already have this node registered, return
 	if _, ok := s.nodesConfig.Nodes[nodeInfo.Id]; ok {
 		s.logger.Infof("Node %s already part of cluster", nodeInfo.Id)
@@ -42,9 +42,9 @@ func (s *CacheServer) RegisterNodeWithCluster(ctx context.Context, nodeInfo *pb.
 		if err != nil {
 			s.logger.Errorf("unable to connect to node %s", node.Id)
 			return nil, status.Errorf(
-	            codes.InvalidArgument,
-	            fmt.Sprintf("Unable to connect to node being registered: %s", node.Id),
-	        )
+				codes.InvalidArgument,
+				fmt.Sprintf("Unable to connect to node being registered: %s", node.Id),
+			)
 		}
 		c.UpdateClusterConfig(reqCtx, &cfg)
 	}
