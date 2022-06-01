@@ -48,7 +48,7 @@ type CacheServer struct {
 	httpsEnabled   bool
 	shutdownChan   chan bool
 	decisionChan   chan string
-	mutex          sync.RWMutex
+	electionLock   sync.RWMutex
 	electionStatus bool
 	pb.UnimplementedCacheServiceServer
 }
