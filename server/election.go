@@ -17,6 +17,7 @@ const (
 // Run an election using the Bully Algorithm (https://en.wikipedia.org/wiki/Bully_algorithm)
 func (s *CacheServer) RunElection() {
 	// an individual node should run a single election process, not multiple concurrent ones
+	s.electionLock.Lock()
 	if s.electionStatus == ELECTION_RUNNING {
 		s.logger.Info("Election already running, waiting for completion...")
 		return
@@ -24,6 +25,7 @@ func (s *CacheServer) RunElection() {
 
 	// update status to election running
 	s.electionStatus = ELECTION_RUNNING
+	s.electionLock.Unlock()
 
 	// check status of every node
 	localPID := int32(os.Getpid())
@@ -76,13 +78,19 @@ func (s *CacheServer) RunElection() {
 				if winner != "" {
 					s.leaderID = winner
 					s.logger.Infof("Received decision: Leader is node %s", s.leaderID)
+
+					s.electionLock.Lock()
 					s.electionStatus = NO_ELECTION_RUNNING
+					s.electionLock.Unlock()
 					return
 				}
 			case <-time.After(5 * time.Second):
 				s.logger.Info("Timed out waiting for decision. Starting new election.")
 				s.RunElection()
+
+				s.electionLock.Lock()
 				s.electionStatus = NO_ELECTION_RUNNING
+				s.electionLock.Unlock()
 				return
 			}
 		}
@@ -95,7 +103,9 @@ func (s *CacheServer) RunElection() {
 	s.AnnounceNewLeader(s.leaderID)
 
 	// reset election status
+	s.electionLock.Lock()
 	s.electionStatus = NO_ELECTION_RUNNING
+	s.electionLock.Unlock()
 }
 
 // Announce new leader to all nodes
