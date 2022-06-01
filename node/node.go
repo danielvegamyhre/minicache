@@ -3,6 +3,7 @@
 package node
 
 import (
+	"fmt"
 	"encoding/json"
 	"hash/crc32"
 	"io/ioutil"
@@ -118,5 +119,6 @@ func randSeq(n int) string {
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
-	return string(b)
+	node_id := fmt.Sprintf("node-%s", string(b))
+	return node_id
 }
