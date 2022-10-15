@@ -232,7 +232,7 @@ func (s *CacheServer) IsLeaderAlive() bool {
 	leader, ok := s.nodesConfig.Nodes[s.leaderID]
 	if !ok {
 		s.logger.Infof("leader %s does not exist", s.leaderID)
-		return true
+		return false
 	}
 
 	// new identity service client
