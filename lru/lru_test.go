@@ -2,6 +2,7 @@ package lru
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -18,6 +19,32 @@ func TestCacheWriteThroughput(t *testing.T) {
 	elapsed := time.Since(start)
 	t.Logf("Time to complete 10M puts: %s", elapsed)
 	t.Logf("LRU Cache write throughput: %f puts/second", float64(num_puts)/elapsed.Seconds())
+}
+
+// TestCacheConcurrentGet runs many Gets on the same keys at once. Since Get
+// moves the touched node to the head of the list, concurrent Gets all rewrite
+// the shared list, so this must be run with -race to catch the data race. It
+// trips the race detector when Get holds only a read lock and is clean once Get
+// takes the write lock.
+func TestCacheConcurrentGet(t *testing.T) {
+	capacity := 100
+	lru := NewLruCache(capacity)
+	for i := 0; i < capacity; i++ {
+		v := strconv.Itoa(i)
+		lru.Put(v, v)
+	}
+
+	var wg sync.WaitGroup
+	for g := 0; g < 50; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 1000; i++ {
+				lru.Get(strconv.Itoa(i % capacity))
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestCacheAllScenarios(t *testing.T) {

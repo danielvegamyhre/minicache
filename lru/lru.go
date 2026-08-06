@@ -40,9 +40,12 @@ func NewLruCache(capacity int) LruCache {
 }
 
 func (lru *LruCache) Get(key string) (string, error) {
-	// read lock
-	lru.mutex.RLock()
-	defer lru.mutex.RUnlock()
+	// Get moves the accessed node to the head of the list, which rewrites the
+	// list pointers, so it needs the write lock. Under a read lock two
+	// concurrent Gets are allowed to run at the same time and their
+	// moveNodeToHead calls race on the shared list, which corrupts it.
+	lru.mutex.Lock()
+	defer lru.mutex.Unlock()
 
 	// case 1: key in cache, move to head of list and return
 	if node, ok := lru.cache[key]; ok {
